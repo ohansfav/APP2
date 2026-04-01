@@ -1,0 +1,392 @@
+```html
+{% extends "base.html" %}
+
+{% block title %}Athlete Detail - Intelligent Sports Management System{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <a href="/athletes" class="btn btn-outline-primary mb-3">
+            <i class="fas fa-arrow-left"></i> Back to Athletes
+        </a>
+    </div>
+</div>
+
+<!-- Athlete Profile -->
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-user-circle"></i> {{ athlete.name }}</h4>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p><strong>Registration Number:</strong> <code>{{ athlete.registration_number }}</code></p>
+                        <p><strong>Sport:</strong> <span class="badge bg-info">{{ athlete.sport }}</span></p>
+                        <p><strong>Age:</strong> {{ athlete.age }} years old</p>
+                        <p><strong>Height:</strong> {{ athlete.height_cm|round(1) }} cm</p>
+                        <p><strong>Weight:</strong> {{ athlete.weight_kg|round(1) }} kg</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Performance Score:</strong>
+                            <div class="progress" style="height: 25px;">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                     style="width: {{ athlete.performance_score }}%">
+                                    {{ athlete.performance_score|round(1) }}/100
+                                </div>
+                            </div>
+                        </p>
+                        <p><strong>Training Hours/Week:</strong> {{ athlete.training_hours_pw|round(1) }} hrs</p>
+                        <p><strong>Sleep Hours/Night:</strong> {{ athlete.sleep_hours|round(1) }} hrs</p>
+                        <p><strong>Joined:</strong> {{ athlete.date_joined|datetimeformat('%d %b %Y') }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="col-lg-4">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-tools"></i> Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#assessInjuryRiskModal">
+                        <i class="fas fa-heartbeat"></i> Assess Injury Risk
+                    </button>
+                    <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#assessTalentModal">
+                        <i class="fas fa-star"></i> Assess Talent Potential
+                    </button>
+                    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#logInjuryModal">
+                        <i class="fas fa-plus-circle"></i> Log Injury
+                    </button>
+                    <button class="btn btn-secondary" onclick="editAthleteProfile({{ athlete.id }})">
+                        <i class="fas fa-edit"></i> Edit Profile
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="injuries-tab" data-bs-toggle="tab" data-bs-target="#injuries" type="button">
+            <i class="fas fa-heartbeat"></i> Injury History
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="talent-tab" data-bs-toggle="tab" data-bs-target="#talent" type="button">
+            <i class="fas fa-brain"></i> Talent Metrics
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="risks-tab" data-bs-toggle="tab" data-bs-target="#risks" type="button">
+            <i class="fas fa-exclamation-triangle"></i> Injury Risk
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- Injuries Tab -->
+    <div class="tab-pane fade show active" id="injuries">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-heartbeat"></i> Injury History</h5>
+            </div>
+            <div class="card-body">
+                {% if injuries %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Injury Type</th>
+                                <th>Severity</th>
+                                <th>Date</th>
+                                <th>Recovery Days</th>
+                                <th>Recovered</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for injury in injuries %}
+                            <tr>
+                                <td><strong>{{ injury.injury_type }}</strong></td>
+                                <td>
+                                    {% if injury.severity == 'mild' %}
+                                    <span class="badge bg-success">{{ injury.severity }}</span>
+                                    {% elif injury.severity == 'moderate' %}
+                                    <span class="badge bg-warning">{{ injury.severity }}</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">{{ injury.severity }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ injury.date_occurred|datetimeformat('%d %b %Y') }}</td>
+                                <td>{{ injury.recovery_duration_days }} days</td>
+                                <td>
+                                    {% if injury.date_recovered %}
+                                    {{ injury.date_recovered|datetimeformat('%d %b %Y') }}
+                                    {% else %}
+                                    <span class="text-danger">Ongoing</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ injury.notes or 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No injury history recorded.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Talent Tab -->
+    <div class="tab-pane fade" id="talent">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-star"></i> Talent Assessment Metrics</h5>
+            </div>
+            <div class="card-body">
+                {% if talent_metrics %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Assessment Date</th>
+                                <th>Speed</th>
+                                <th>Strength</th>
+                                <th>Endurance</th>
+                                <th>Agility</th>
+                                <th>Technique</th>
+                                <th>Talent Potential</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for metric in talent_metrics %}
+                            <tr>
+                                <td>{{ metric.assessment_date|datetimeformat('%d %b %Y') }}</td>
+                                <td>{{ metric.speed_score or '-' }}</td>
+                                <td>{{ metric.strength_score or '-' }}</td>
+                                <td>{{ metric.endurance_score or '-' }}</td>
+                                <td>{{ metric.agility_score or '-' }}</td>
+                                <td>{{ metric.technique_score or '-' }}</td>
+                                <td>
+                                    <strong>{{ metric.talent_potential|round(1) }}%</strong>
+                                    {% if metric.talent_potential >= 67 %}
+                                    <i class="fas fa-crown text-warning"></i>
+                                    {% endif %}
+                                </td>
+                                <td>{{ (metric.model_confidence * 100)|round(1) }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No talent assessments yet. Click "Assess Talent Potential" to add one.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Risk Assessment Tab -->
+    <div class="tab-pane fade" id="risks">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Injury Risk Assessments</h5>
+            </div>
+            <div class="card-body">
+                {% if risk_assessments %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Assessment Date</th>
+                                <th>Training Hrs/Wk</th>
+                                <th>Previous Injuries</th>
+                                <th>Sleep Hrs</th>
+                                <th>Risk Score</th>
+                                <th>Category</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assessment in risk_assessments %}
+                            <tr>
+                                <td>{{ assessment.assessment_date|datetimeformat('%d %b %Y') }}</td>
+                                <td>{{ assessment.training_hours_pw|round(1) }}</td>
+                                <td>{{ assessment.prev_injuries }}</td>
+                                <td>{{ assessment.sleep_hours|round(1) }}</td>
+                                <td><strong>{{ (assessment.injury_risk_score * 100)|round(1) }}%</strong></td>
+                                <td>
+                                    {% if assessment.risk_category == 'low' %}
+                                    <span class="badge bg-success">{{ assessment.risk_category }}</span>
+                                    {% elif assessment.risk_category == 'medium' %}
+                                    <span class="badge bg-warning">{{ assessment.risk_category }}</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">{{ assessment.risk_category }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ (assessment.model_confidence * 100)|round(1) }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No risk assessments yet. Click "Assess Injury Risk" to add one.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assess Injury Risk Modal -->
+<div class="modal fade" id="assessInjuryRiskModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="fas fa-heartbeat"></i> Assess Injury Risk</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="injuryRiskForm">
+                    <input type="hidden" name="athlete_id" value="{{ athlete.id }}">
+                    <div class="mb-3">
+                        <label class="form-label">Training Hours/Week</label>
+                        <input type="number" class="form-control" name="training_hours_pw" step="0.1" value="{{ athlete.training_hours_pw }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Previous Injuries</label>
+                        <input type="number" class="form-control" name="prev_injuries" min="0" value="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sleep Hours/Night</label>
+                        <input type="number" class="form-control" name="sleep_hours" step="0.1" value="{{ athlete.sleep_hours }}" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="submitInjuryRiskAssessment({{ athlete.id }})">
+                    <i class="fas fa-check"></i> Assess
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assess Talent Modal -->
+<div class="modal fade" id="assessTalentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-star"></i> Assess Talent Potential</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="talentAssessmentForm">
+                    <input type="hidden" name="athlete_id" value="{{ athlete.id }}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Speed (0-100)</label>
+                            <input type="number" class="form-control" name="speed_score" min="0" max="100" step="0.1">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Strength (0-100)</label>
+                            <input type="number" class="form-control" name="strength_score" min="0" max="100" step="0.1">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Endurance (0-100)</label>
+                            <input type="number" class="form-control" name="endurance_score" min="0" max="100" step="0.1">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Agility (0-100)</label>
+                            <input type="number" class="form-control" name="agility_score" min="0" max="100" step="0.1">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Technique (0-100)</label>
+                        <input type="number" class="form-control" name="technique_score" min="0" max="100" step="0.1">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-info" onclick="submitTalentAssessment({{ athlete.id }})">
+                    <i class="fas fa-check"></i> Assess
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Injury Modal -->
+<div class="modal fade" id="logInjuryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-plus-circle"></i> Log New Injury</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="logInjuryForm">
+                    <input type="hidden" name="athlete_id" value="{{ athlete.id }}">
+                    <div class="mb-3">
+                        <label class="form-label">Injury Type</label>
+                        <input type="text" class="form-control" name="injury_type" placeholder="e.g., Sprain, Fracture" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Severity</label>
+                        <select class="form-select" name="severity" required>
+                            <option value="mild">Mild</option>
+                            <option value="moderate">Moderate</option>
+                            <option value="severe">Severe</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Date Occurred</label>
+                        <input type="date" class="form-control" name="date_occurred" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Recovery Duration (days)</label>
+                        <input type="number" class="form-control" name="recovery_duration_days" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="submitLogInjury({{ athlete.id }})">
+                    <i class="fas fa-save"></i> Log Injury
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/athlete_detail.js') }}"></script>
+{% endblock %}
+```

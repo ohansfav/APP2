@@ -1,0 +1,5 @@
+Athlete ID,Athlete Name,Sport,Training Hours/Week,Previous Injuries,Sleep Hours/Day,Risk Score,Risk Category,Model Confidence,Assessment Date
+1,Jamal Johnson,Volleyball,22.0,3,4.0,0.926,high,0.926,2026-03-30 02:21
+1,Jamal Johnson,Volleyball,7.485944469710894,0,7.618044857124541,0.01,low,0.99,2026-03-30 01:22
+1,Jamal Johnson,Volleyball,18.0,1,6.5,0.784,high,0.784,2026-03-30 01:20
+2,Chioma Obi,Track & Field,10.0,0,8.0,0.025,low,0.975,2026-03-30 02:21

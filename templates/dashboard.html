@@ -1,0 +1,221 @@
+```html
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Intelligent Sports Management System{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-6">
+            <i class="fas fa-chart-line text-primary"></i> Sports Management Dashboard
+        </h1>
+        <p class="text-muted">Real-time athlete and event tracking for University of Delta</p>
+    </div>
+</div>
+
+<!-- Export Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-info shadow">
+            <div class="card-header bg-info text-white">
+                <i class="fas fa-download"></i> <strong>Export Data</strong>
+            </div>
+            <div class="card-body">
+                <p class="mb-3"><small class="text-muted">Download athlete registry and prediction results for administrative reports and backup.</small></p>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="/export/athletes" class="btn btn-primary" title="Export complete athlete registry to CSV">
+                        <i class="fas fa-users"></i> Export Athlete Registry
+                    </a>
+                    <a href="/export/predictions" class="btn btn-warning" title="Export latest injury risk predictions to CSV">
+                        <i class="fas fa-heartbeat"></i> Export Risk Predictions
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Key Metrics -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card border-left-primary shadow h-100">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-auto">
+                        <i class="fas fa-users fa-3x text-primary"></i>
+                    </div>
+                    <div class="col">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase">Total Athletes</div>
+                        <div class="h3 mb-0">{{ total_athletes }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card border-left-success shadow h-100">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-auto">
+                        <i class="fas fa-calendar fa-3x text-success"></i>
+                    </div>
+                    <div class="col">
+                        <div class="text-xs font-weight-bold text-success text-uppercase">Active Events</div>
+                        <div class="h3 mb-0">{{ total_events }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card border-left-warning shadow h-100">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-auto">
+                        <i class="fas fa-heartbeat fa-3x text-warning"></i>
+                    </div>
+                    <div class="col">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase">Total Injuries</div>
+                        <div class="h3 mb-0">{{ total_injuries }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card border-left-danger shadow h-100">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-auto">
+                        <i class="fas fa-exclamation-triangle fa-3x text-danger"></i>
+                    </div>
+                    <div class="col">
+                        <div class="text-xs font-weight-bold text-danger text-uppercase">Recent Injuries (30d)</div>
+                        <div class="h3 mb-0">{{ recent_injury_count }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts and Details -->
+<div class="row">
+    <!-- Sports Distribution -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-pie-chart"></i> Sports Distribution
+            </div>
+            <div class="card-body">
+                <canvas id="sportsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Performers -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <i class="fas fa-star"></i> Top Performers
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    {% for athlete in top_performers %}
+                    <a href="/athlete/{{ athlete.id }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">{{ athlete.name }}</h6>
+                                <small class="text-muted">{{ athlete.sport }} • Age {{ athlete.age }}</small>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">{{ athlete.performance_score|round(1) }}</span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Events -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <i class="fas fa-calendar-check"></i> Recent Events
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Event Name</th>
+                                <th>Type</th>
+                                <th>Date</th>
+                                <th>Location</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for event in recent_events %}
+                            <tr>
+                                <td>{{ event.event_name }}</td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ event.event_type }}</span>
+                                </td>
+                                <td>{{ event.date|datetimeformat('%d %b %Y') }}</td>
+                                <td>{{ event.location }}</td>
+                                <td>
+                                    <a href="#" class="btn btn-sm btn-info">
+                                        <i class="fas fa-link"></i> Details
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Sports Distribution Chart
+const sportsCtx = document.getElementById('sportsChart').getContext('2d');
+const sportsData = {
+    {% for sport, count in sports_count %}
+    '{{ sport }}': {{ count }},
+    {% endfor %}
+};
+
+new Chart(sportsCtx, {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys(sportsData),
+        datasets: [{
+            data: Object.values(sportsData),
+            backgroundColor: [
+                '#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6f42c1', '#fd7e14'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+</script>
+{% endblock %}
+```
