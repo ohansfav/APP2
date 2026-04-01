@@ -1,7 +1,7 @@
 """
 Flask Routes - Dashboard, CRUD Operations, and ML Prediction APIs
 """
-from flask import Blueprint, render_template, request, jsonify, send_file
+from flask import Blueprint, render_template, request, jsonify, send_file, redirect, url_for, session
 from models.database import db, Athlete, Event, Injury, TalentMetric, InjuryRiskAssessment
 from ml.ml_models import InjuryRiskModel, TalentIdentificationModel
 from datetime import datetime, timedelta
@@ -10,6 +10,7 @@ import os
 import csv
 import io
 from io import StringIO, BytesIO
+from functools import wraps
 
 # Create blueprints
 main_bp = Blueprint('main', __name__)
@@ -19,10 +20,49 @@ api_bp = Blueprint('api', __name__)
 injury_risk_model = InjuryRiskModel()
 talent_model = TalentIdentificationModel()
 
+# Demo credentials
+DEMO_USERS = {
+    'admin': 'admin123'
+}
+
+# Login required decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('main.login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# ==================== AUTH ROUTES ====================
+
+@main_bp.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login page"""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        # Check credentials
+        if username in DEMO_USERS and DEMO_USERS[username] == password:
+            session['user_id'] = username
+            session['user_name'] = username
+            return redirect(url_for('main.dashboard'))
+        else:
+            return render_template('login.html', error='Invalid credentials')
+    
+    return render_template('login.html')
+
+@main_bp.route('/logout')
+def logout():
+    """Logout"""
+    session.clear()
+    return redirect(url_for('main.login'))
 
 # ==================== MAIN ROUTES ====================
 
 @main_bp.route('/')
+@login_required
 def dashboard():
     """Main dashboard view"""
     try:
@@ -59,13 +99,14 @@ def dashboard():
             'top_performers': top_performers
         }
         
-        return render_template('dashboard.html', **context)
+        return render_template('dashboard_new.html', **context)
     except Exception as e:
         print(f"Error: {e}")
-        return render_template('dashboard.html', error=str(e))
+        return render_template('dashboard_new.html', error=str(e))
 
 
 @main_bp.route('/athletes')
+@login_required
 def athletes_list():
     """View all athletes"""
     try:
@@ -77,6 +118,7 @@ def athletes_list():
 
 
 @main_bp.route('/athlete/<int:athlete_id>')
+@login_required
 def athlete_detail(athlete_id):
     """View athlete detail and health metrics"""
     try:
@@ -95,6 +137,7 @@ def athlete_detail(athlete_id):
 
 
 @main_bp.route('/analytics')
+@login_required
 def analytics():
     """Predictive analytics dashboard"""
     try:
@@ -122,6 +165,7 @@ def analytics():
 
 
 @main_bp.route('/events')
+@login_required
 def events_list():
     """View all events"""
     try:
@@ -135,6 +179,7 @@ def events_list():
 # ==================== EXPORT ROUTES (CSV/DOWNLOAD) ====================
 
 @main_bp.route('/export/athletes')
+@login_required
 def export_athletes_csv():
     """
     Export Athlete Registry to CSV format.
@@ -186,6 +231,7 @@ def export_athletes_csv():
 
 
 @main_bp.route('/export/predictions')
+@login_required
 def export_predictions_csv():
     """
     Export All Injury Risk Predictions to CSV format.

@@ -1,0 +1,447 @@
+{% extends "base_new.html" %}
+
+{% block title %}Home - APP Athlete Performance Predictor{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Featured Banner -->
+    <section class="featured-banner mb-4">
+        <div class="banner-carousel">
+            <div class="banner-slide active">
+                <div class="banner-content">
+                    <h2>Peak Performance Zone</h2>
+                    <p>Track your athletes' best performances and potential</p>
+                    <a href="/athletes" class="btn-banner">View Athletes →</a>
+                </div>
+                <div class="banner-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Stats -->
+    <section class="quick-stats mb-4">
+        <div class="stat-card stat-card-primary">
+            <div class="stat-number">{{ total_athletes }}</div>
+            <div class="stat-label">Athletes</div>
+            <div class="stat-icon"><i class="fas fa-users"></i></div>
+        </div>
+        <div class="stat-card stat-card-success">
+            <div class="stat-number">{{ total_events }}</div>
+            <div class="stat-label">Events</div>
+            <div class="stat-icon"><i class="fas fa-calendar"></i></div>
+        </div>
+        <div class="stat-card stat-card-warning">
+            <div class="stat-number">{{ total_injuries }}</div>
+            <div class="stat-label">Injuries</div>
+            <div class="stat-icon"><i class="fas fa-heartbeat"></i></div>
+        </div>
+        <div class="stat-card stat-card-info">
+            <div class="stat-number">{{ recent_injury_count }}</div>
+            <div class="stat-label">Recent</div>
+            <div class="stat-icon"><i class="fas fa-exclamation"></i></div>
+        </div>
+    </section>
+
+    <!-- Top Performers -->
+    <section class="section mb-4">
+        <h3 class="section-title">
+            <i class="fas fa-star"></i> Top Performers
+        </h3>
+        <div class="athletes-grid">
+            {% for athlete in top_performers %}
+            <a href="/athlete/{{ athlete.id }}" class="athlete-card">
+                <div class="athlete-card-img">
+                    <img src="https://via.placeholder.com/150?text={{ athlete.name|truncate(5) }}" alt="{{ athlete.name }}">
+                    <div class="athlete-badge">{{ athlete.performance_score }}%</div>
+                </div>
+                <div class="athlete-info">
+                    <h4>{{ athlete.name }}</h4>
+                    <p class="sport-tag">{{ athlete.sport }}</p>
+                    <div class="performance-bar">
+                        <div class="performance-fill" style="width: {{ athlete.performance_score }}%"></div>
+                    </div>
+                </div>
+            </a>
+            {% else %}
+            <p class="text-muted text-center">No athletes yet</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Recent Events -->
+    <section class="section mb-4">
+        <h3 class="section-title">
+            <i class="fas fa-calendar-check"></i> Upcoming Events
+        </h3>
+        <div class="events-list">
+            {% for event in recent_events %}
+            <a href="/events" class="event-item">
+                <div class="event-date">
+                    <span class="event-day">{{ event.date.strftime('%d') }}</span>
+                    <span class="event-month">{{ event.date.strftime('%b') }}</span>
+                </div>
+                <div class="event-details">
+                    <h5>{{ event.event_name }}</h5>
+                    <p><i class="fas fa-map-marker-alt"></i> {{ event.location }}</p>
+                </div>
+                <div class="event-arrow">
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+            </a>
+            {% else %}
+            <p class="text-muted text-center">No events scheduled</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Export Options -->
+    <section class="section mb-4">
+        <h3 class="section-title">
+            <i class="fas fa-download"></i> Export Data
+        </h3>
+        <div class="export-grid">
+            <a href="/export/athletes" class="export-card">
+                <div class="export-icon"><i class="fas fa-users"></i></div>
+                <h5>Athlete Registry</h5>
+                <p>Download all athletes</p>
+            </a>
+            <a href="/export/predictions" class="export-card">
+                <div class="export-icon"><i class="fas fa-heartbeat"></i></div>
+                <h5>Risk Predictions</h5>
+                <p>Download predictions</p>
+            </a>
+        </div>
+    </section>
+</div>
+
+<style>
+    .dashboard-container {
+        padding-bottom: 100px;
+    }
+
+    /* Featured Banner */
+    .featured-banner {
+        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+        border-radius: 15px;
+        padding: 20px;
+        color: white;
+        overflow: hidden;
+    }
+
+    .banner-carousel {
+        position: relative;
+    }
+
+    .banner-slide {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .banner-content h2 {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+
+    .banner-content p {
+        font-size: 14px;
+        margin-bottom: 15px;
+        opacity: 0.9;
+    }
+
+    .btn-banner {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 8px 15px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 13px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-banner:hover {
+        background: rgba(255, 255, 255, 0.5);
+        transform: translateX(5px);
+    }
+
+    .banner-icon {
+        font-size: 60px;
+        opacity: 0.3;
+    }
+
+    /* Quick Stats */
+    .quick-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 12px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 15px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+    }
+
+    .stat-card-primary::before { background: #007bff; }
+    .stat-card-success::before { background: #28a745; }
+    .stat-card-warning::before { background: #ffc107; }
+    .stat-card-info::before { background: #17a2b8; }
+
+    .stat-number {
+        font-size: 24px;
+        font-weight: 700;
+        color: #333;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
+    }
+
+    .stat-icon {
+        position: absolute;
+        right: 10px;
+        top: 10px;
+        font-size: 20px;
+        opacity: 0.2;
+    }
+
+    /* Section */
+    .section {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 15px;
+        color: #333;
+    }
+
+    .section-title i {
+        color: #ffc107;
+        margin-right: 8px;
+    }
+
+    /* Athletes Grid */
+    .athletes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 15px;
+    }
+
+    .athlete-card {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        text-decoration: none;
+        color: #333;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border: 1px solid #f0f0f0;
+    }
+
+    .athlete-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .athlete-card-img {
+        position: relative;
+        overflow: hidden;
+        height: 140px;
+    }
+
+    .athlete-card-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .athlete-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .athlete-info {
+        padding: 12px;
+    }
+
+    .athlete-info h4 {
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sport-tag {
+        font-size: 11px;
+        color: #666;
+        background: #f5f5f5;
+        padding: 3px 8px;
+        border-radius: 4px;
+        display: inline-block;
+        margin-bottom: 8px;
+    }
+
+    .performance-bar {
+        height: 4px;
+        background: #e0e0e0;
+        border-radius: 2px;
+        overflow: hidden;
+    }
+
+    .performance-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ffc107 0%, #ff9800 100%);
+        transition: width 0.3s ease;
+    }
+
+    /* Events List */
+    .events-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .event-item {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 15px;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        text-decoration: none;
+        color: #333;
+        transition: all 0.3s ease;
+    }
+
+    .event-item:hover {
+        border-color: #ffc107;
+        background: #fff9e6;
+    }
+
+    .event-date {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 8px;
+        min-width: 50px;
+    }
+
+    .event-day {
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .event-month {
+        font-size: 11px;
+        opacity: 0.9;
+    }
+
+    .event-details {
+        flex: 1;
+    }
+
+    .event-details h5 {
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .event-details p {
+        font-size: 12px;
+        color: #666;
+        margin: 0;
+    }
+
+    .event-arrow {
+        color: #ffc107;
+        font-size: 18px;
+    }
+
+    /* Export Grid */
+    .export-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+    }
+
+    .export-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 12px;
+        text-decoration: none;
+        color: #333;
+        transition: all 0.3s ease;
+        text-align: center;
+    }
+
+    .export-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .export-icon {
+        font-size: 32px;
+        color: #ffc107;
+        margin-bottom: 10px;
+    }
+
+    .export-card h5 {
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .export-card p {
+        font-size: 12px;
+        color: #666;
+        margin: 0;
+    }
+
+    @media (max-width: 768px) {
+        .athletes-grid {
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        }
+    }
+</style>
+{% endblock %}

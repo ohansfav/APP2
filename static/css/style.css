@@ -598,6 +598,195 @@ footer p {
     }
 }
 
+/* ==================== MODERN DESIGN STYLES ==================== */
+
+/* Modern Header */
+.modern-header {
+    background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    color: white;
+    padding-bottom: 0;
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.header-top {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 12px 0;
+}
+
+.header-location {
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-location i {
+    font-size: 16px;
+}
+
+.header-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.profile-img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.btn-logout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.btn-logout:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.header-brand {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.header-brand h1 {
+    font-size: 26px;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-brand i {
+    font-size: 28px;
+}
+
+.header-search {
+    padding-bottom: 15px;
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 10px 15px;
+    gap: 10px;
+}
+
+.search-box i {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.search-box input {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 14px;
+    width: 100%;
+    outline: none;
+}
+
+.search-box input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Main Content */
+.main-content {
+    padding: 20px 0;
+    padding-bottom: 80px;
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-around;
+    z-index: 1000;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.bottom-nav .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    color: #666;
+    text-decoration: none;
+    font-size: 11px;
+    transition: all 0.3s ease;
+    border-top: 3px solid transparent;
+}
+
+.bottom-nav .nav-item i {
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+.bottom-nav .nav-item.active {
+    color: #ffc107;
+    border-top-color: #ffc107;
+}
+
+.bottom-nav .nav-item:hover {
+    color: #ffc107;
+    background: #fff9e6;
+}
+
+/* Modern Footer */
+.modern-footer {
+    background: #333;
+    color: #999;
+    text-align: center;
+    padding: 15px;
+    font-size: 12px;
+}
+
+/* APP Brand with Hover */
+.header-brand .app-short {
+    display: inline;
+    transition: all 0.3s ease;
+}
+
+.header-brand .app-full {
+    display: none;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.header-brand:hover .app-short {
+    display: none;
+}
+
+.header-brand:hover .app-full {
+    display: inline;
+    opacity: 1;
+}
+
 /* Landscape Mobile */
 @media (max-height: 500px) and (orientation: landscape) {
     .navbar {
