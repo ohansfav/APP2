@@ -30,7 +30,7 @@ function initializeTalentDistributionChart() {
     if (!ctx) return;
     
     new Chart(ctx, {
-        type: 'histogram',
+        type: 'bar',
         data: {
             labels: ['0-30', '30-50', '50-70', '70-100'],
             datasets: [{
