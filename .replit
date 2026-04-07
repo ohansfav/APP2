@@ -1,0 +1,25 @@
+run = "python run.py"
+language = "python3"
+modules = ["python-3.10:v18-20230807-322e88b"]
+
+[nix]
+channel = "stable-22_11"
+
+[env]
+VIRTUAL_ENV = "/home/runner/${REPL_SLUG}/venv"
+PATH = "${VIRTUAL_ENV}/bin:${PATH}"
+PYTHONPATH = "/home/runner/${REPL_SLUG}"
+
+[packager]
+afterInstall = ""
+ignoredPaths = ["__pycache__"]
+
+[packager.features]
+enableGuessImports = true
+singularizePackageName = true
+
+[debugger]
+support = true
+
+[unitTest]
+language = "python3"

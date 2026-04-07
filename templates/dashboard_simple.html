@@ -1,0 +1,586 @@
+{% extends "base_simple.html" %}
+
+{% block title %}Dashboard - APP{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Premium Stats Section -->
+    <div class="premium-stats mb-5">
+        <div class="stat-card premium">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-card-content">
+                <div class="stat-value">{{ total_athletes }}</div>
+                <div class="stat-title">Total Athletes</div>
+                <div class="stat-change">Active in system</div>
+            </div>
+        </div>
+
+        <div class="stat-card premium">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                <i class="fas fa-heartbeat"></i>
+            </div>
+            <div class="stat-card-content">
+                <div class="stat-value">{{ total_injuries }}</div>
+                <div class="stat-title">Total Injuries</div>
+                <div class="stat-change">{{ recent_injury_count }} in last 30 days</div>
+            </div>
+        </div>
+
+        <div class="stat-card premium">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+                <i class="fas fa-calendar"></i>
+            </div>
+            <div class="stat-card-content">
+                <div class="stat-value">{{ total_events }}</div>
+                <div class="stat-title">Upcoming Events</div>
+                <div class="stat-change">Scheduled competitions</div>
+            </div>
+        </div>
+
+        <div class="stat-card premium">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white;">
+                <i class="fas fa-trophy"></i>
+            </div>
+            <div class="stat-card-content">
+                <div class="stat-value">{{ (top_performers|length) }}</div>
+                <div class="stat-title">Top Performers</div>
+                <div class="stat-change">Elite athletes</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="row mb-4">
+        <!-- Top Performers Section (Left) -->
+        <div class="col-lg-7 mb-4">
+            <div class="card professional">
+                <div class="card-header premium-header">
+                    <i class="fas fa-star"></i>
+                    <span>Top Performing Athletes</span>
+                    <span class="badge badge-light">Elite Squad</span>
+                </div>
+                <div class="card-body">
+                    {% if top_performers %}
+                        <div class="athletes-list">
+                            {% for athlete in top_performers %}
+                            <div class="athlete-row">
+                                <div class="athlete-rank">
+                                    {% if loop.index == 1 %}
+                                        <i class="fas fa-medal medal-gold"></i>
+                                    {% elif loop.index == 2 %}
+                                        <i class="fas fa-medal medal-silver"></i>
+                                    {% elif loop.index == 3 %}
+                                        <i class="fas fa-medal medal-bronze"></i>
+                                    {% else %}
+                                        <span class="rank-number">#{{ loop.index }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="athlete-details">
+                                    <div class="athlete-name">{{ athlete.name }}</div>
+                                    <div class="athlete-meta">{{ athlete.sport }} {% if athlete.age %}· Age {{ athlete.age }}{% endif %}</div>
+                                </div>
+                                <div class="athlete-performance">
+                                    <div class="perf-bar">
+                                        <div class="perf-fill" style="width: {{ athlete.performance_score }}%; background: linear-gradient(90deg, {% if athlete.performance_score >= 85 %}#28a745{% elif athlete.performance_score >= 70 %}#ffc107{% else %}#dc3545{% endif %} 0%, {% if athlete.performance_score >= 85 %}#20c997{% elif athlete.performance_score >= 70 %}#fd7e14{% else %}#e74c3c{% endif %} 100%);"></div>
+                                    </div>
+                                    <div class="perf-score">{{ athlete.performance_score }}%</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>No athletes added yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Insights (Right) -->
+        <div class="col-lg-5 mb-4">
+            <div class="card professional">
+                <div class="card-header premium-header">
+                    <i class="fas fa-lightbulb"></i>
+                    <span>Key Insights</span>
+                </div>
+                <div class="card-body">
+                    <div class="insight-item">
+                        <div class="insight-icon" style="color: #007bff;">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="insight-content">
+                            <div class="insight-title">Average Performance</div>
+                            <div class="insight-value">
+                                {% set avg_perf = (top_performers|map(attribute='performance_score')|list|sum / (top_performers|length)) if top_performers else 0 %}
+                                {{ "%.1f"|format(avg_perf) }}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="insight-item">
+                        <div class="insight-icon" style="color: #28a745;">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="insight-content">
+                            <div class="insight-title">Healthy Athletes</div>
+                            <div class="insight-value">{{ total_athletes - total_injuries }}</div>
+                        </div>
+                    </div>
+
+                    <div class="insight-item">
+                        <div class="insight-icon" style="color: #dc3545;">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <div class="insight-content">
+                            <div class="insight-title">Requiring Attention</div>
+                            <div class="insight-value">{{ recent_injury_count }}</div>
+                        </div>
+                    </div>
+
+                    <div class="insight-item">
+                        <div class="insight-icon" style="color: #ffc107;">
+                            <i class="fas fa-fire"></i>
+                        </div>
+                        <div class="insight-content">
+                            <div class="insight-title">Active Events</div>
+                            <div class="insight-value">{{ total_events }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card professional mt-4">
+                <div class="card-header premium-header">
+                    <i class="fas fa-bolt"></i>
+                    <span>Quick Actions</span>
+                </div>
+                <div class="card-body">
+                    <a href="/athletes" class="action-btn">
+                        <i class="fas fa-users"></i>
+                        <div>
+                            <div class="action-title">Manage Athletes</div>
+                            <div class="action-desc">View & add athletes</div>
+                        </div>
+                    </a>
+                    <a href="/analytics" class="action-btn">
+                        <i class="fas fa-chart-bar"></i>
+                        <div>
+                            <div class="action-title">View Analytics</div>
+                            <div class="action-desc">Injury predictions</div>
+                        </div>
+                    </a>
+                    <a href="/events" class="action-btn">
+                        <i class="fas fa-calendar"></i>
+                        <div>
+                            <div class="action-title">Events</div>
+                            <div class="action-desc">Upcoming competitions</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sports Distribution & Recent Activity -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card professional">
+                <div class="card-header premium-header">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Athletes by Sport</span>
+                </div>
+                <div class="card-body">
+                    <div class="sports-grid">
+                        {% set sports_dict = {} %}
+                        {% for athlete in top_performers %}
+                            {% if athlete.sport not in sports_dict %}
+                                {% set _ = sports_dict.update({athlete.sport: 0}) %}
+                            {% endif %}
+                            {% set _ = sports_dict.update({athlete.sport: sports_dict[athlete.sport] + 1}) %}
+                        {% endfor %}
+                        {% for sport, count in sports_dict.items() %}
+                        <div class="sport-card">
+                            <div class="sport-icon">
+                                {% if 'Football' in sport %}<i class="fas fa-football-ball"></i>
+                                {% elif 'Basketball' in sport %}<i class="fas fa-basketball-ball"></i>
+                                {% elif 'Tennis' in sport %}<i class="fas fa-table-tennis"></i>
+                                {% elif 'Swimming' in sport %}<i class="fas fa-swimmer"></i>
+                                {% elif 'Track' in sport %}<i class="fas fa-person-running"></i>
+                                {% elif 'Volleyball' in sport %}<i class="fas fa-volleyball"></i>
+                                {% else %}<i class="fas fa-dumbbell"></i>
+                                {% endif %}
+                            </div>
+                            <div class="sport-name">{{ sport }}</div>
+                            <div class="sport-count">{{ count }} Athletes</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.dashboard-container {
+    padding: 0;
+}
+
+/* Premium Stats Section */
+.premium-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+}
+
+.stat-card.premium {
+    background: white;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 25px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    border: 1px solid #f0f0f0;
+}
+
+.stat-card.premium:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+}
+
+.stat-card-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.stat-card-content {
+    flex: 1;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 4px;
+}
+
+.stat-title {
+    font-size: 14px;
+    color: #718096;
+    font-weight: 600;
+}
+
+.stat-change {
+    font-size: 12px;
+    color: #a0aec0;
+    margin-top: 4px;
+}
+
+/* Professional Cards */
+.card.professional {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+}
+
+.card.professional:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+}
+
+.card-header.premium-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+    font-size: 16px;
+    border: none;
+}
+
+.card-header.premium-header i {
+    font-size: 18px;
+}
+
+.card-header.premium-header .badge {
+    margin-left: auto;
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+}
+
+/* Athletes List */
+.athletes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.athlete-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.athlete-row:hover {
+    background: #e9ecef;
+    transform: translateX(4px);
+}
+
+.athlete-rank {
+    font-size: 24px;
+    width: 40px;
+    text-align: center;
+}
+
+.medal-gold { color: #ffc107; }
+.medal-silver { color: #c0c0c0; }
+.medal-bronze { color: #cd7f32; }
+
+.rank-number {
+    font-weight: 700;
+    color: #667eea;
+    display: block;
+}
+
+.athlete-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.athlete-name {
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 15px;
+}
+
+.athlete-meta {
+    font-size: 12px;
+    color: #a0aec0;
+    margin-top: 2px;
+}
+
+.athlete-performance {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 150px;
+}
+
+.perf-bar {
+    flex: 1;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.perf-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.perf-score {
+    font-weight: 700;
+    color: #2d3748;
+    min-width: 45px;
+    text-align: right;
+    font-size: 14px;
+}
+
+/* Key Insights */
+.insight-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.insight-item:last-child {
+    border-bottom: none;
+}
+
+.insight-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    background: #f7fafc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.insight-content {
+    flex: 1;
+}
+
+.insight-title {
+    font-size: 13px;
+    color: #a0aec0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.insight-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-top: 4px;
+}
+
+/* Quick Actions */
+.action-btn {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s ease;
+    margin-bottom: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.action-btn:last-child {
+    margin-bottom: 0;
+}
+
+.action-btn:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    transform: translateX(4px);
+    border-color: transparent;
+}
+
+.action-btn i {
+    font-size: 24px;
+    width: 45px;
+    text-align: center;
+}
+
+.action-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.action-desc {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+/* Sports Grid */
+.sports-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+}
+
+.sport-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    color: white;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.sport-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+}
+
+.sport-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+    opacity: 0.9;
+}
+
+.sport-name {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sport-count {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-top: 6px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #a0aec0;
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.3;
+}
+
+@media (max-width: 768px) {
+    .premium-stats {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+    }
+
+    .stat-card.premium {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .stat-card-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 22px;
+    }
+
+    .perf-bar {
+        display: none;
+    }
+
+    .athlete-performance {
+        gap: 8px;
+    }
+
+    .sports-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+}
+</style>
+{% endblock %}

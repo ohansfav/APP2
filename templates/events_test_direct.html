@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TEST - Events</title>
+</head>
+<body style="font-family: Arial; margin: 20px;">
+    <h1>EVENTS TEST PAGE - NOT BASED ON ANY TEMPLATE</h1>
+    <p>This is a stripped-down test to verify template rendering.</p>
+    {% if events %}
+        <p>Found {{ events.total }} events</p>
+    {% else %}
+        <p>No events found</p>
+    {% endif %}
+</body>
+</html>

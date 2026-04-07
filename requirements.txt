@@ -6,4 +6,5 @@ numpy
 joblib
 python-dateutil
 python-dotenv
+gunicorn
 

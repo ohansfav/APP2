@@ -7,6 +7,33 @@ from sqlalchemy import func
 
 db = SQLAlchemy()
 
+class User(db.Model):
+    """User Account Model"""
+    __tablename__ = 'users'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(120), nullable=False)
+    full_name = db.Column(db.String(120))
+    role = db.Column(db.String(20), default='user', nullable=False)  # 'admin', 'coach', 'user'
+    sport_specialization = db.Column(db.String(100))  # Sport that coach specializes in (null for admin/user)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<User {self.username}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email,
+            'full_name': self.full_name,
+            'role': self.role,
+            'sport_specialization': self.sport_specialization,
+            'created_at': self.created_at.strftime('%Y-%m-%d')
+        }
+
 class Athlete(db.Model):
     """Athlete Profile Model"""
     __tablename__ = 'athletes'

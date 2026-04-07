@@ -1,197 +1,485 @@
-```html
-{% extends "base.html" %}
+{% extends "modern.html" %}
 
-{% block title %}Athletes - Intelligent Sports Management System{% endblock %}
+{% block title %}Athletes - Athlete Performance Predictor{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12 d-flex justify-content-between align-items-center">
-        <div>
-            <h1 class="display-6"><i class="fas fa-users text-primary"></i> Athlete Registry</h1>
-            <p class="text-muted">Comprehensive athlete management and performance tracking</p>
-        </div>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAthleteModal">
+<style>
+    .athletes-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .add-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+        padding: 12px 20px;
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        border: none;
+        cursor: pointer;
+    }
+
+    .add-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        color: white;
+    }
+
+    .search-box {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 10px 15px;
+        color: var(--text-primary);
+        font-size: 14px;
+        flex: 1;
+        max-width: 300px;
+        transition: all 0.3s ease;
+    }
+
+    .search-box:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .athletes-table {
+        width: 100%;
+        border-collapse: collapse;
+        color: var(--text-primary);
+    }
+
+    .athletes-table thead {
+        background: var(--bg-secondary);
+    }
+
+    .athletes-table th {
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 12px;
+        color: var(--text-secondary);
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .athletes-table td {
+        padding: 15px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .athletes-table tbody tr {
+        transition: all 0.3s ease;
+    }
+
+    .athletes-table tbody tr:hover {
+        background: var(--bg-secondary);
+        transform: scale(1.01);
+    }
+
+    .athlete-name {
+        font-weight: 600;
+        color: #667eea;
+    }
+
+    .badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .action-cell {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-view {
+        background: #667eea;
+        color: white;
+    }
+
+    .btn-view:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+    }
+
+    .btn-delete {
+        background: #f56565;
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background: #e53e3e;
+        transform: translateY(-2px);
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        animation: fadeIn 0.3s ease;
+    }
+
+    .modal.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background: var(--bg-primary);
+        padding: 30px;
+        border-radius: 16px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+        animation: slideUp 0.3s ease;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .modal-header h2 {
+        color: var(--text-primary);
+        margin: 0;
+        font-size: 22px;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 28px;
+        cursor: pointer;
+        color: var(--text-secondary);
+        transition: color 0.3s ease;
+    }
+
+    .close-btn:hover {
+        color: var(--text-primary);
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .form-group input, .form-group select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        font-size: 14px;
+        font-family: inherit;
+        transition: all 0.3s ease;
+    }
+
+    .form-group input:focus, .form-group select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .submit-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 8px;
+        padding: 12px 20px;
+        color: white;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+
+    .submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-secondary);
+    }
+
+    .empty-state i {
+        font-size: 48px;
+        color: var(--text-secondary);
+        opacity: 0.5;
+        margin-bottom: 15px;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .table-container {
+        background: var(--bg-secondary);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--border-color);
+        overflow-x: auto;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .athletes-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .search-box {
+            max-width: 100%;
+            flex: 1;
+        }
+
+        .athletes-table th, .athletes-table td {
+            padding: 10px;
+            font-size: 12px;
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
+        .modal-content {
+            margin-bottom: 100px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .athletes-header {
+            flex-direction: column;
+        }
+
+        .add-btn, .search-box {
+            width: 100%;
+        }
+
+        .athletes-table {
+            font-size: 12px;
+        }
+
+        .athletes-table th, .athletes-table td {
+            padding: 8px;
+            font-size: 11px;
+        }
+
+        .action-cell {
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .btn-small {
+            font-size: 10px;
+            padding: 4px 6px;
+            width: 100%;
+        }
+
+        .table-container {
+            padding: 12px;
+            border-radius: 12px;
+        }
+
+        .modal-content {
+            width: 95%;
+            padding: 20px;
+            margin-bottom: 120px;
+        }
+
+        .modal-header h2 {
+            font-size: 18px;
+        }
+    }
+</style>
+
+<!-- Header -->
+<div class="athletes-header">
+    <h1 style="font-size: 28px; font-weight: 700; color: var(--text-primary); margin: 0;">
+        <i class="fas fa-users" style="color: #667eea; margin-right: 10px;"></i>Athletes Management
+    </h1>
+    <div style="display: flex; gap: 10px;">
+        <input type="text" id="searchInput" class="search-box" placeholder="Search athletes...">
+        <button class="add-btn" onclick="openModal()">
             <i class="fas fa-plus"></i> Add Athlete
         </button>
     </div>
 </div>
 
-<!-- Search and Filter -->
-<div class="row mb-3">
-    <div class="col-md-6">
-        <div class="input-group">
-            <span class="input-group-text"><i class="fas fa-search"></i></span>
-            <input type="text" class="form-control" id="searchInput" placeholder="Search athletes by name...">
-        </div>
-    </div>
-    <div class="col-md-6">
-        <select class="form-select" id="sportFilter">
-            <option value="">All Sports</option>
-            <option value="Football">Football</option>
-            <option value="Basketball">Basketball</option>
-            <option value="Track & Field">Track & Field</option>
-            <option value="Volleyball">Volleyball</option>
-            <option value="Tennis">Tennis</option>
-        </select>
-    </div>
-</div>
-
 <!-- Athletes Table -->
-<div class="card shadow">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead class="table-light">
-                    <tr>
-                        <th>Name</th>
-                        <th>Registration #</th>
-                        <th>Sport</th>
-                        <th>Age</th>
-                        <th>Performance</th>
-                        <th>Training (hrs/wk)</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="athletesTableBody">
-                    {% for athlete in athletes.items %}
-                    <tr>
-                        <td><strong>{{ athlete.name }}</strong></td>
-                        <td><code>{{ athlete.registration_number }}</code></td>
-                        <td>
-                            <span class="badge bg-info">{{ athlete.sport }}</span>
-                        </td>
-                        <td>{{ athlete.age }}</td>
-                        <td>
-                            <div class="progress" style="height: 20px;">
-                                <div class="progress-bar bg-success" role="progressbar" 
-                                     style="width: {{ athlete.performance_score }}%">
-                                    {{ athlete.performance_score|round(1) }}
-                                </div>
-                            </div>
-                        </td>
-                        <td>{{ athlete.training_hours_pw|round(1) }}</td>
-                        <td>
-                            <a href="/athlete/{{ athlete.id }}" class="btn btn-sm btn-primary">
-                                <i class="fas fa-eye"></i> View
-                            </a>
-                            <button class="btn btn-sm btn-warning" onclick="editAthlete({{ athlete.id }})">
-                                <i class="fas fa-edit"></i> Edit
+<div class="table-container">
+    {% if athletes %}
+    <table class="athletes-table" id="athletesTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Sport</th>
+                <th>Age</th>
+                <th>Performance</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            {% for athlete in athletes %}
+            <tr class="athlete-row">
+                <td>
+                    <span class="athlete-name">{{ athlete.name }}</span>
+                </td>
+                <td>{{ athlete.sport }}</td>
+                <td>{{ athlete.age }}</td>
+                <td>
+                    <span class="badge">{{ athlete.performance_score|round(1) }}</span>
+                </td>
+                <td>
+                    <span style="color: #48bb78; font-weight: 600;">Active</span>
+                </td>
+                <td>
+                    <div class="action-cell">
+                        <a href="/athlete/{{ athlete.id }}" class="btn-small btn-view">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                        <form method="POST" action="/delete_athlete" style="display: inline;" onsubmit="return confirm('Delete this athlete?');">
+                            <input type="hidden" name="athlete_id" value="{{ athlete.id }}">
+                            <button type="submit" class="btn-small btn-delete">
+                                <i class="fas fa-trash"></i> Delete
                             </button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <h3 style="color: var(--text-primary);">No Athletes Yet</h3>
+        <p>Add your first athlete to get started</p>
     </div>
+    {% endif %}
 </div>
-
-<!-- Pagination -->
-{% if athletes.pages > 1 %}
-<nav class="mt-4">
-    <ul class="pagination justify-content-center">
-        {% if athletes.has_prev %}
-        <li class="page-item">
-            <a class="page-link" href={{ athletes.prev_num }}>Previous</a>
-        </li>
-        {% endif %}
-        
-        {% for page_num in athletes.iter_pages() %}
-            {% if page_num %}
-                {% if page_num == athletes.page %}
-                <li class="page-item active">
-                    <span class="page-link">{{ page_num }}</span>
-                </li>
-                {% else %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
-                </li>
-                {% endif %}
-            {% endif %}
-        {% endfor %}
-        
-        {% if athletes.has_next %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ athletes.next_num }}">Next</a>
-        </li>
-        {% endif %}
-    </ul>
-</nav>
-{% endif %}
 
 <!-- Add Athlete Modal -->
-<div class="modal fade" id="addAthleteModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-user-plus"></i> Add New Athlete</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="addAthleteForm">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Full Name</label>
-                            <input type="text" class="form-control" name="name" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Registration Number</label>
-                            <input type="text" class="form-control" name="registration_number" required>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Age</label>
-                            <input type="number" class="form-control" name="age" min="18" max="35" required>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Height (cm)</label>
-                            <input type="number" class="form-control" name="height_cm" step="0.1">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Weight (kg)</label>
-                            <input type="number" class="form-control" name="weight_kg" step="0.1">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Sport</label>
-                            <select class="form-select" name="sport" required>
-                                <option>Football</option>
-                                <option>Basketball</option>
-                                <option>Track & Field</option>
-                                <option>Volleyball</option>
-                                <option>Tennis</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Training Hours/Week</label>
-                            <input type="number" class="form-control" name="training_hours_pw" step="0.5" value="10">
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Sleep Hours/Night</label>
-                            <input type="number" class="form-control" name="sleep_hours" step="0.5" value="7">
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Performance Score</label>
-                            <input type="number" class="form-control" name="performance_score" min="0" max="100" step="0.1" value="50">
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="submitAddAthlete()">
-                    <i class="fas fa-save"></i> Add Athlete
-                </button>
-            </div>
+<div id="athleteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add New Athlete</h2>
+            <button class="close-btn" onclick="closeModal()">&times;</button>
         </div>
+        <form method="POST" action="/athlete/add">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" placeholder="Athlete name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="sport">Sport</label>
+                <input type="text" id="sport" name="sport" placeholder="e.g., Football, Basketball" required>
+            </div>
+
+            <div class="form-group">
+                <label for="age">Age</label>
+                <input type="number" id="age" name="age" placeholder="Age" min="1" max="100" required>
+            </div>
+
+            <div class="form-group">
+                <label for="performance_score">Performance Score</label>
+                <input type="number" id="performance_score" name="performance_score" placeholder="0.0 - 100.0" min="0" max="100" step="0.1" required>
+            </div>
+
+            <button type="submit" class="submit-btn">
+                <i class="fas fa-check"></i> Add Athlete
+            </button>
+        </form>
     </div>
 </div>
 
-{% endblock %}
+<script>
+    function openModal() {
+        document.getElementById('athleteModal').classList.add('show');
+    }
 
-{% block extra_js %}
-<script src="{{ url_for('static', filename='js/athletes.js') }}"></script>
+    function closeModal() {
+        document.getElementById('athleteModal').classList.remove('show');
+    }
+
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('keyup', function(e) {
+        const search = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('.athlete-row');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(search) ? '' : 'none';
+        });
+    });
+
+    // Close modal when clicking outside
+    window.addEventListener('click', function(e) {
+        const modal = document.getElementById('athleteModal');
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+</script>
+
 {% endblock %}
-```

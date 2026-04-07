@@ -2,7 +2,7 @@
 Flask Routes - Dashboard, CRUD Operations, and ML Prediction APIs
 """
 from flask import Blueprint, render_template, request, jsonify, send_file, redirect, url_for, session
-from models.database import db, Athlete, Event, Injury, TalentMetric, InjuryRiskAssessment
+from models.database import db, User, Athlete, Event, Injury, TalentMetric, InjuryRiskAssessment
 from ml.ml_models import InjuryRiskModel, TalentIdentificationModel
 from datetime import datetime, timedelta
 from sqlalchemy import func
@@ -11,6 +11,7 @@ import csv
 import io
 from io import StringIO, BytesIO
 from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Create blueprints
 main_bp = Blueprint('main', __name__)
@@ -20,7 +21,7 @@ api_bp = Blueprint('api', __name__)
 injury_risk_model = InjuryRiskModel()
 talent_model = TalentIdentificationModel()
 
-# Demo credentials
+# Demo credentials (kept for testing)
 DEMO_USERS = {
     'admin': 'admin123'
 }
@@ -34,6 +35,28 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# Role-based access control decorators
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('main.login'))
+        if session.get('user_role') != 'admin':
+            return redirect(url_for('main.dashboard'))  # Redirect non-admin users
+        return f(*args, **kwargs)
+    return decorated_function
+
+def coach_or_admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('main.login'))
+        role = session.get('user_role')
+        if role not in ['admin', 'coach']:
+            return redirect(url_for('main.dashboard'))  # Redirect non-coach/admin users
+        return f(*args, **kwargs)
+    return decorated_function
+
 # ==================== AUTH ROUTES ====================
 
 @main_bp.route('/login', methods=['GET', 'POST'])
@@ -43,15 +66,82 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        # Check credentials
-        if username in DEMO_USERS and DEMO_USERS[username] == password:
-            session['user_id'] = username
-            session['user_name'] = username
+        # Try to find user in database first
+        user = User.query.filter_by(username=username).first()
+        
+        if user and check_password_hash(user.password, password):
+            session['user_id'] = user.id
+            session['user_name'] = user.username
+            session['user_role'] = user.role
+            session['user_sport'] = user.sport_specialization
             return redirect(url_for('main.dashboard'))
-        else:
-            return render_template('login.html', error='Invalid credentials')
+        
+        return render_template('login.html', error='Invalid credentials', tab='login')
     
-    return render_template('login.html')
+    return render_template('login.html', tab='login')
+
+@main_bp.route('/signup', methods=['GET', 'POST'])
+def signup():
+    """Signup page"""
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        full_name = request.form.get('full_name', '').strip()
+        role = request.form.get('role', 'user').strip()  # admin, coach, or user
+        sport_specialization = request.form.get('sport_specialization', '').strip() if role == 'coach' else None
+        
+        # Validation
+        if not username or len(username) < 3:
+            return render_template('login.html', error='Username must be at least 3 characters', tab='signup')
+        
+        if not email or '@' not in email:
+            return render_template('login.html', error='Please enter a valid email', tab='signup')
+        
+        if not password or len(password) < 6:
+            return render_template('login.html', error='Password must be at least 6 characters', tab='signup')
+        
+        if password != confirm_password:
+            return render_template('login.html', error='Passwords do not match', tab='signup')
+        
+        if role == 'coach' and not sport_specialization:
+            return render_template('login.html', error='Please select a sport for coaching', tab='signup')
+        
+        if role not in ['admin', 'coach', 'user']:
+            return render_template('login.html', error='Invalid role selected', tab='signup')
+        
+        # Check if user exists
+        if User.query.filter_by(username=username).first():
+            return render_template('login.html', error='Username already exists', tab='signup')
+        
+        if User.query.filter_by(email=email).first():
+            return render_template('login.html', error='Email already registered', tab='signup')
+        
+        # Create new user
+        try:
+            new_user = User(
+                username=username,
+                email=email,
+                password=generate_password_hash(password),
+                full_name=full_name,
+                role=role,
+                sport_specialization=sport_specialization
+            )
+            db.session.add(new_user)
+            db.session.commit()
+            
+            # Log them in
+            session['user_id'] = new_user.id
+            session['user_name'] = new_user.username
+            session['user_role'] = new_user.role
+            session['user_sport'] = new_user.sport_specialization
+            return redirect(url_for('main.dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            return render_template('login.html', error=f'Signup failed: {str(e)}', tab='signup')
+    
+    return render_template('login.html', tab='signup')
 
 @main_bp.route('/logout')
 def logout():
@@ -62,47 +152,87 @@ def logout():
 # ==================== MAIN ROUTES ====================
 
 @main_bp.route('/')
+@main_bp.route('/')
 @login_required
 def dashboard():
     """Main dashboard view"""
     try:
-        # Fetch statistics
-        total_athletes = db.session.query(func.count(Athlete.id)).scalar() or 0
-        total_events = db.session.query(func.count(Event.id)).scalar() or 0
-        total_injuries = db.session.query(func.count(Injury.id)).scalar() or 0
+        user_role = session.get('user_role', 'user')
+        user_sport = session.get('user_sport')
         
-        # Get recent events
-        recent_events = Event.query.order_by(Event.date.desc()).limit(5).all()
+        # Build query based on role - create fresh queries for each operation
+        if user_role == 'coach':
+            # Coaches see only their sport
+            total_athletes = Athlete.query.filter_by(sport=user_sport).count()
+            total_events = Event.query.count()
+            injury_query_base = Injury.query.join(Athlete).filter(Athlete.sport == user_sport)
+            total_injuries = injury_query_base.count()
+            
+            # Get injury trends (last 30 days)
+            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+            recent_injury_count = injury_query_base.filter(
+                Injury.date_occurred >= thirty_days_ago
+            ).count()
+            
+            top_performers = Athlete.query.filter_by(sport=user_sport).order_by(Athlete.performance_score.desc()).limit(4).all()
+            recent_events = Event.query.order_by(Event.date.desc()).limit(5).all()
+            all_athletes = Athlete.query.filter_by(sport=user_sport).all()
+            
+        elif user_role == 'user':
+            # Users see only their sport (but limited data)
+            if user_sport:
+                total_athletes = Athlete.query.filter_by(sport=user_sport).count()
+                all_athletes = Athlete.query.filter_by(sport=user_sport).all()
+                top_performers = Athlete.query.filter_by(sport=user_sport).order_by(Athlete.performance_score.desc()).limit(4).all()
+            else:
+                total_athletes = 0
+                all_athletes = []
+                top_performers = []
+            
+            total_events = 0  # Users can't see events
+            total_injuries = 0  # Users can't see injury data
+            recent_injury_count = 0
+            recent_events = []
+            
+        else:
+            # Admin sees all
+            total_athletes = Athlete.query.count()
+            total_events = Event.query.count()
+            injury_query_base = Injury.query
+            total_injuries = injury_query_base.count()
+            
+            # Get injury trends (last 30 days)
+            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+            recent_injury_count = injury_query_base.filter(
+                Injury.date_occurred >= thirty_days_ago
+            ).count()
+            
+            top_performers = Athlete.query.order_by(Athlete.performance_score.desc()).limit(4).all()
+            recent_events = Event.query.order_by(Event.date.desc()).limit(5).all()
+            all_athletes = Athlete.query.all()
         
-        # Get sports breakdown
-        sports_count = db.session.query(
-            Athlete.sport,
-            func.count(Athlete.id)
-        ).group_by(Athlete.sport).all()
-        
-        # Get injury trends (last 30 days)
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-        recent_injury_count = db.session.query(func.count(Injury.id)).filter(
-            Injury.date_occurred >= thirty_days_ago
-        ).scalar() or 0
-        
-        # Get top performers
-        top_performers = Athlete.query.order_by(Athlete.performance_score.desc()).limit(5).all()
+        # Get sports count
+        sports_count = {}
+        for athlete in all_athletes:
+            sports_count[athlete.sport] = sports_count.get(athlete.sport, 0) + 1
         
         context = {
             'total_athletes': total_athletes,
             'total_events': total_events,
             'total_injuries': total_injuries,
             'recent_injury_count': recent_injury_count,
+            'top_performers': top_performers,
             'recent_events': recent_events,
-            'sports_count': sports_count,
-            'top_performers': top_performers
+            'sports_count': list(sports_count.items()) if sports_count else [],
+            'athletes': all_athletes,
+            'user_role': user_role,
+            'user_sport': user_sport
         }
         
-        return render_template('dashboard_new.html', **context)
+        return render_template('dashboard.html', **context)
     except Exception as e:
         print(f"Error: {e}")
-        return render_template('dashboard_new.html', error=str(e))
+        return render_template('dashboard.html', **{'error': str(e), 'total_athletes': 0, 'total_events': 0, 'total_injuries': 0, 'recent_injury_count': 0, 'top_performers': [], 'recent_events': [], 'sports_count': [], 'user_role': session.get('user_role', 'user')})
 
 
 @main_bp.route('/athletes')
@@ -110,11 +240,119 @@ def dashboard():
 def athletes_list():
     """View all athletes"""
     try:
-        page = request.args.get('page', 1, type=int)
-        athletes = Athlete.query.paginate(page=page, per_page=20)
-        return render_template('athletes.html', athletes=athletes)
+        user_role = session.get('user_role', 'user')
+        user_sport = session.get('user_sport')
+        
+        # Filter based on role
+        if user_role == 'coach':
+            # Coaches see only their sport
+            athletes = Athlete.query.filter_by(sport=user_sport).order_by(Athlete.performance_score.desc()).all()
+        elif user_role == 'user':
+            # Users see only their sport
+            athletes = Athlete.query.filter_by(sport=user_sport).order_by(Athlete.performance_score.desc()).all() if user_sport else []
+        else:
+            # Admin sees all
+            athletes = Athlete.query.order_by(Athlete.performance_score.desc()).all()
+        
+        return render_template('athletes.html', athletes=athletes, user_role=user_role, user_sport=user_sport)
     except Exception as e:
-        return render_template('athletes.html', error=str(e))
+        return render_template('athletes.html', error=str(e), user_role=session.get('user_role', 'user'))
+
+
+@main_bp.route('/athlete/add', methods=['POST'])
+@coach_or_admin_required
+def add_athlete():
+    """Add new athlete via form"""
+    try:
+        user_role = session.get('user_role', 'user')
+        user_sport = session.get('user_sport')
+        
+        name = request.form.get('name', '').strip()
+        sport = request.form.get('sport', '').strip()
+        age = request.form.get('age', '20')
+        performance_score = request.form.get('performance_score', '50')
+        
+        # Coaches can only add athletes for their sport
+        if user_role == 'coach':
+            sport = user_sport  # Override with coach's sport
+        
+        # Validate inputs
+        if not name or not sport:
+            print("Error: Name and sport are required")
+            return redirect(url_for('main.athletes_list'))
+        
+        try:
+            age = int(age) if age else 20
+            performance_score = float(performance_score) if performance_score else 50.0
+        except ValueError:
+            age = 20
+            performance_score = 50.0
+        
+        # Generate a registration number
+        import uuid
+        registration_number = f"ATH-{uuid.uuid4().hex[:8].upper()}"
+        
+        athlete = Athlete(
+            name=name,
+            registration_number=registration_number,
+            age=age,
+            sport=sport,
+            performance_score=performance_score,
+            training_hours_pw=10,
+            sleep_hours=8
+        )
+        
+        db.session.add(athlete)
+        db.session.commit()
+        print(f"Successfully added athlete: {name}")
+        
+        return redirect(url_for('main.athletes_list'))
+    except Exception as e:
+        print(f"Error adding athlete: {e}")
+        db.session.rollback()
+        return redirect(url_for('main.athletes_list'))
+
+
+@main_bp.route('/delete_athlete', methods=['POST'])
+@coach_or_admin_required
+def delete_athlete_form():
+    """Delete athlete via form POST"""
+    try:
+        user_role = session.get('user_role', 'user')
+        user_sport = session.get('user_sport')
+        
+        athlete_id = request.form.get('athlete_id')
+        athlete = Athlete.query.get(athlete_id)
+        
+        if athlete:
+            # Coaches can only delete athletes from their sport
+            if user_role == 'coach' and athlete.sport != user_sport:
+                print(f"Error: Coach cannot delete athlete from {athlete.sport}")
+                return redirect(url_for('main.athletes_list'))
+            
+            db.session.delete(athlete)
+            db.session.commit()
+        
+        return redirect(url_for('main.athletes_list'))
+    except Exception as e:
+        print(f"Error deleting athlete: {e}")
+        return redirect(url_for('main.athletes_list'))
+
+
+@main_bp.route('/athlete/<int:athlete_id>/delete', methods=['POST'])
+@login_required
+def delete_athlete_route(athlete_id):
+    """Delete athlete via POST"""
+    try:
+        athlete = Athlete.query.get(athlete_id)
+        if athlete:
+            db.session.delete(athlete)
+            db.session.commit()
+            return jsonify({'success': True})
+        return jsonify({'error': 'Athlete not found'}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 
 @main_bp.route('/athlete/<int:athlete_id>')
@@ -141,27 +379,71 @@ def athlete_detail(athlete_id):
 def analytics():
     """Predictive analytics dashboard"""
     try:
-        # Get all athletes for analysis
+        # Get all athletes
         athletes = Athlete.query.all()
+        total_athletes = len(athletes)
         
-        # Get talent metrics summary
-        talent_summary = db.session.query(
-            TalentMetric.athlete_id,
-            func.max(TalentMetric.talent_potential)
-        ).group_by(TalentMetric.athlete_id).all()
+        # Get injury risk assessments
+        injury_risks = []
+        for athlete in athletes:
+            latest_assessment = InjuryRiskAssessment.query.filter_by(
+                athlete_id=athlete.id
+            ).order_by(InjuryRiskAssessment.assessment_date.desc()).first()
+            
+            if latest_assessment:
+                risk_level = 'Low' if latest_assessment.injury_risk_score < 0.4 else 'Medium' if latest_assessment.injury_risk_score < 0.7 else 'High'
+                injury_risks.append({
+                    'athlete_name': athlete.name,
+                    'sport': athlete.sport,
+                    'risk_level': risk_level,
+                    'risk_score': latest_assessment.injury_risk_score,
+                    'recommendations': 'Regular monitoring recommended'
+                })
         
-        # Get risk assessments summary
-        risk_summary = db.session.query(
-            InjuryRiskAssessment.athlete_id,
-            func.max(InjuryRiskAssessment.injury_risk_score)
-        ).group_by(InjuryRiskAssessment.athlete_id).all()
+        # Calculate statistics
+        high_risk_count = len([r for r in injury_risks if r['risk_level'] == 'High'])
+        avg_performance = db.session.query(func.avg(Athlete.performance_score)).scalar() or 50
+        healthy_count = total_athletes - high_risk_count
+        
+        # Count talented athletes (top performers)
+        total_talents = len([a for a in athletes if a.performance_score >= 75])
+        
+        # Get sports data for chart
+        sports_data = {}
+        for athlete in athletes:
+            if athlete.sport not in sports_data:
+                sports_data[athlete.sport] = []
+            sports_data[athlete.sport].append(athlete.performance_score)
+        
+        sport_labels = list(sports_data.keys())
+        sport_performance = [sum(scores) / len(scores) if scores else 0 for scores in sports_data.values()]
+        sports_count = [(label, len(sports_data[label])) for label in sport_labels]
         
         return render_template('analytics.html', 
+                             injury_risks=injury_risks,
+                             high_risk_count=high_risk_count,
+                             average_performance=avg_performance,
+                             total_athletes=total_athletes,
+                             healthy_count=healthy_count,
+                             total_talents=total_talents,
                              athletes=athletes,
-                             talent_summary=talent_summary,
-                             risk_summary=risk_summary)
+                             sport_data=sport_labels,
+                             sport_performance=sport_performance,
+                             sports_count=sports_count)
     except Exception as e:
-        return render_template('analytics.html', error=str(e))
+        print(f"Analytics error: {e}")
+        return render_template('analytics.html', 
+                             injury_risks=[],
+                             high_risk_count=0,
+                             average_performance=0,
+                             total_athletes=0,
+                             healthy_count=0,
+                             total_talents=0,
+                             athletes=[],
+                             sport_data=[],
+                             sport_performance=[],
+                             sports_count=[],
+                             error=str(e))
 
 
 @main_bp.route('/events')
@@ -169,11 +451,63 @@ def analytics():
 def events_list():
     """View all events"""
     try:
+        user_role = session.get('user_role', 'user')
+        
+        # Users cannot view events
+        if user_role == 'user':
+            return redirect(url_for('main.dashboard'))
+        
         page = request.args.get('page', 1, type=int)
         events = Event.query.order_by(Event.date.desc()).paginate(page=page, per_page=20)
-        return render_template('events.html', events=events)
+        return render_template('events.html', events=events, user_role=user_role)
     except Exception as e:
-        return render_template('events.html', error=str(e))
+        return render_template('events.html', error=str(e), user_role=session.get('user_role', 'user'))
+
+
+@main_bp.route('/event/add', methods=['POST'])
+@coach_or_admin_required
+def add_event():
+    """Add new event via form"""
+    try:
+        event_name = request.form.get('event_name', '').strip()
+        event_type = request.form.get('event_type', 'Training').strip()
+        location = request.form.get('location', '').strip()
+        event_date = request.form.get('event_date', '')
+        description = request.form.get('description', '').strip()
+        
+        # Validate inputs
+        if not event_name or not event_date:
+            print("Error: Event name and date are required")
+            return redirect(url_for('main.events_list'))
+        
+        try:
+            from datetime import datetime
+            # Handle different date formats
+            try:
+                event_date_obj = datetime.fromisoformat(event_date)
+            except:
+                event_date_obj = datetime.strptime(event_date, '%Y-%m-%d')
+        except ValueError:
+            print("Error: Invalid date format")
+            return redirect(url_for('main.events_list'))
+        
+        event = Event(
+            event_name=event_name,
+            event_type=event_type,
+            location=location,
+            date=event_date_obj,
+            description=description
+        )
+        
+        db.session.add(event)
+        db.session.commit()
+        print(f"Successfully added event: {event_name}")
+        
+        return redirect(url_for('main.events_list'))
+    except Exception as e:
+        print(f"Error adding event: {e}")
+        db.session.rollback()
+        return redirect(url_for('main.events_list'))
 
 
 # ==================== EXPORT ROUTES (CSV/DOWNLOAD) ====================
@@ -398,7 +732,22 @@ def update_athlete(athlete_id):
     Ensures metrics remain within realistic ranges.
     """
     try:
+        # Check permissions
+        if 'user_id' not in session:
+            return jsonify({'error': 'Unauthorized'}), 401
+        
+        user_role = session.get('user_role', 'user')
+        user_sport = session.get('user_sport')
+        
+        if user_role == 'user':
+            return jsonify({'error': 'Users cannot update athlete data'}), 403
+        
         athlete = Athlete.query.get_or_404(athlete_id)
+        
+        # Coaches can only update athletes from their sport
+        if user_role == 'coach' and athlete.sport != user_sport:
+            return jsonify({'error': 'You can only update athletes from your sport'}), 403
+        
         data = request.json
         
         # ===== VALIDATION FOR UPDATES =====
@@ -463,7 +812,22 @@ def update_athlete(athlete_id):
 def delete_athlete(athlete_id):
     """Delete athlete"""
     try:
+        # Check permissions
+        if 'user_id' not in session:
+            return jsonify({'error': 'Unauthorized'}), 401
+        
+        user_role = session.get('user_role', 'user')
+        user_sport = session.get('user_sport')
+        
+        if user_role == 'user':
+            return jsonify({'error': 'Users cannot delete athlete data'}), 403
+        
         athlete = Athlete.query.get_or_404(athlete_id)
+        
+        # Coaches can only delete athletes from their sport
+        if user_role == 'coach' and athlete.sport != user_sport:
+            return jsonify({'error': 'You can only delete athletes from your sport'}), 403
+        
         db.session.delete(athlete)
         db.session.commit()
         return jsonify({'message': 'Athlete deleted successfully'})
@@ -574,7 +938,26 @@ def get_injuries():
 def log_injury():
     """Log new injury"""
     try:
+        # Check permissions
+        if 'user_id' not in session:
+            return jsonify({'error': 'Unauthorized'}), 401
+        
+        user_role = session.get('user_role', 'user')
+        user_sport = session.get('user_sport')
+        
+        if user_role == 'user':
+            return jsonify({'error': 'Users cannot log injury data'}), 403
+        
         data = request.json
+        athlete_id = data.get('athlete_id')
+        athlete = Athlete.query.get(athlete_id)
+        
+        if not athlete:
+            return jsonify({'error': 'Athlete not found'}), 404
+        
+        # Coaches can only log injuries for their sport
+        if user_role == 'coach' and athlete.sport != user_sport:
+            return jsonify({'error': 'You can only log injuries for athletes in your sport'}), 403
         
         injury = Injury(
             athlete_id=data.get('athlete_id'),
@@ -601,6 +984,14 @@ def log_injury():
 def get_events():
     """Get all events"""
     try:
+        # Check if user is logged in and has permission
+        if 'user_id' not in session:
+            return jsonify({'error': 'Unauthorized'}), 401
+        
+        user_role = session.get('user_role', 'user')
+        if user_role == 'user':
+            return jsonify({'error': 'Users do not have access to events'}), 403
+        
         events = Event.query.all()
         return jsonify([event.to_dict() for event in events])
     except Exception as e:
@@ -611,6 +1002,15 @@ def get_events():
 def create_event():
     """Create new event"""
     try:
+        # Check if user is logged in
+        if 'user_id' not in session:
+            return jsonify({'error': 'Unauthorized'}), 401
+        
+        # Check if user has permission (only admin and coach)
+        user_role = session.get('user_role', 'user')
+        if user_role not in ['admin', 'coach']:
+            return jsonify({'error': 'Only admins and coaches can create events'}), 403
+        
         data = request.json
         
         event = Event(

@@ -1,0 +1,169 @@
+{% extends "base_simple.html" %}
+
+{% block title %}Analytics - APP{% endblock %}
+{% block page_title %}Analytics & Predictions{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Summary Stats -->
+    <div class="stats-grid mb-5">
+        <div class="stat-card">
+            <div class="stat-number">{{ high_risk_count }}</div>
+            <div class="stat-label">High Risk Athletes</div>
+            <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ avg_performance|round(1) }}</div>
+            <div class="stat-label">Avg Performance</div>
+            <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ total_talents }}</div>
+            <div class="stat-label">Talented Athletes</div>
+            <div class="stat-icon"><i class="fas fa-star"></i></div>
+        </div>
+    </div>
+
+    <!-- Injury Risk Predictions -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-heartbeat"></i> Injury Risk Assessment
+        </div>
+        <div class="card-body">
+            {% if injury_risks %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Athlete</th>
+                                <th>Sport</th>
+                                <th>Risk Level</th>
+                                <th>Risk Score</th>
+                                <th>Recommendations</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for risk in injury_risks %}
+                            <tr>
+                                <td><strong>{{ risk.athlete_name }}</strong></td>
+                                <td>{{ risk.sport }}</td>
+                                <td>
+                                    {% if risk.risk_level == 'High' %}
+                                        <span class="badge bg-danger">{{ risk.risk_level }}</span>
+                                    {% elif risk.risk_level == 'Medium' %}
+                                        <span class="badge bg-warning text-dark">{{ risk.risk_level }}</span>
+                                    {% else %}
+                                        <span class="badge bg-success">{{ risk.risk_level }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div style="width: 100px; height: 6px; background: #f1f1f1; border-radius: 3px; overflow: hidden; margin-right: 10px;">
+                                            <div style="width: {{ risk.risk_score * 100 }}%; height: 100%; background: {% if risk.risk_score > 0.7 %}#dc3545{% elif risk.risk_score > 0.4 %}#ffc107{% else %}#28a745{% endif %};"></div>
+                                        </div>
+                                        <span>{{ (risk.risk_score * 100)|round(1) }}%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <small>{{ risk.recommendations or 'Regular monitoring' }}</small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted text-center">No injury risk data available yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Performance by Sport -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-chart-bar"></i> Performance by Sport
+        </div>
+        <div class="card-body">
+            <canvas id="sportChart" style="max-height: 300px;"></canvas>
+        </div>
+    </div>
+
+    <!-- Action Cards -->
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column align-items-center text-center py-4">
+                    <div style="font-size: 36px; color: #dc3545; margin-bottom: 15px;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h5 class="card-title mb-2">Risk Management</h5>
+                    <p class="card-text text-muted mb-3" style="font-size: 14px;">Review athletes identified as high-risk and implement preventive measures</p>
+                    <a href="/analytics/risk-details" class="btn btn-outline-danger btn-sm">View Details</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column align-items-center text-center py-4">
+                    <div style="font-size: 36px; color: #28a745; margin-bottom: 15px;">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <h5 class="card-title mb-2">Talent Identification</h5>
+                    <p class="card-text text-muted mb-3" style="font-size: 14px;">Discover high-potential athletes for advanced development programs</p>
+                    <a href="/analytics/talents" class="btn btn-outline-success btn-sm">View Talents</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Sport Performance Chart
+const sportLabels = {{ sport_data|tojson }};
+const sportValues = {{ sport_performance|tojson }};
+
+const ctx = document.getElementById('sportChart').getContext('2d');
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: sportLabels,
+        datasets: [{
+            label: 'Average Performance',
+            data: sportValues,
+            backgroundColor: [
+                'rgba(0, 123, 255, 0.8)',
+                'rgba(40, 167, 69, 0.8)',
+                'rgba(255, 193, 7, 0.8)',
+                'rgba(220, 53, 69, 0.8)',
+                'rgba(23, 162, 184, 0.8)',
+                'rgba(111, 66, 193, 0.8)',
+            ],
+            borderRadius: 6,
+            borderSkipped: false,
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false }
+        },
+        scales: {
+            x: {
+                beginAtZero: true,
+                max: 100,
+                ticks: { callback: function(value) { return value + '%'; } }
+            }
+        }
+    }
+});
+</script>
+
+<style>
+#sportChart {
+    min-height: 300px;
+}
+</style>
+{% endblock %}

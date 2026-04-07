@@ -3,165 +3,659 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Athlete Performance Predictor</title>
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Login & Signup - Athlete Performance Predictor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/modern.css') }}" rel="stylesheet">
     <style>
         body {
-            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
-            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: background 0.3s ease;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+        }
+
+        body[data-theme="dark"] {
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
         }
 
         .login-container {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            max-width: 400px;
             width: 100%;
+            max-width: 420px;
+            animation: slideDown 0.6s ease;
+        }
+
+        .login-card {
+            background: var(--bg-primary);
+            border-radius: 24px;
+            padding: 30px 25px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .login-card:hover {
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.25);
+            transform: translateY(-4px);
         }
 
         .logo-section {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
+            animation: fadeIn 0.6s ease 0.2s both;
         }
 
-        .logo-icon {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
-            border-radius: 50%;
+        .logo-circle {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 15px;
-            font-size: 40px;
+            margin: 0 auto 12px;
+            font-size: 2.2rem;
             color: white;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            transition: transform 0.3s ease;
+        }
+
+        .logo-circle:hover {
+            transform: scale(1.08) rotate(5deg);
         }
 
         .logo-section h1 {
-            font-size: 28px;
+            color: var(--text-primary);
+            font-size: 26px;
             font-weight: 700;
-            margin-bottom: 10px;
-            color: #333;
-        }
-
-        .logo-section p {
-            color: #666;
-            font-size: 14px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-label {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-
-        .form-control {
-            border-radius: 10px;
-            border: 2px solid #e0e0e0;
-            padding: 12px 15px;
-            font-size: 14px;
-            transition: border-color 0.3s ease;
-        }
-
-        .form-control:focus {
-            border-color: #ffc107;
-            box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
-        }
-
-        .btn-login {
-            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
-            border: none;
-            border-radius: 10px;
-            padding: 12px;
-            font-weight: 600;
-            font-size: 16px;
-            width: 100%;
-            color: white;
-            margin-top: 10px;
-            cursor: pointer;
-            transition: transform 0.2s ease;
-        }
-
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(255, 193, 7, 0.4);
-            color: white;
-        }
-
-        .demo-users {
-            background: #f5f5f5;
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 20px;
-            border: 1px dashed #ddd;
-        }
-
-        .demo-users h6 {
-            font-size: 12px;
-            font-weight: 600;
-            color: #666;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-        }
-
-        .demo-user {
-            font-size: 12px;
-            color: #666;
             margin-bottom: 5px;
         }
 
-        .demo-user strong {
-            color: #333;
+        .logo-section p {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin: 0;
+        }
+
+        /* Tab Navigation */
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            animation: fadeIn 0.6s ease 0.3s both;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+            animation: fadeIn 0.6s ease backwards;
+        }
+
+        .form-group:nth-child(1) { animation-delay: 0.3s; }
+        .form-group:nth-child(2) { animation-delay: 0.35s; }
+        .form-group:nth-child(3) { animation-delay: 0.4s; }
+        .form-group:nth-child(4) { animation-delay: 0.45s; }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 7px;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 11px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .auth-btn {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            margin-top: 8px;
+            animation: fadeIn 0.6s ease 0.6s both;
+        }
+
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .auth-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Error Message */
+        .error-message {
+            background-color: rgba(220, 38, 38, 0.1);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            color: #dc2626;
+            padding: 12px 14px;
+            border-radius: 10px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            animation: slideUp 0.4s ease;
+        }
+
+        .error-message i {
+            flex-shrink: 0;
+        }
+
+        /* Demo Section (Login tab only) */
+        .demo-section {
+            display: none;
+        }
+
+        /* Role Selection */
+        .role-selection {
+            display: none;
+            margin-bottom: 18px;
+            animation: fadeIn 0.6s ease backwards;
+        }
+
+        .role-selection.visible {
+            display: block;
+        }
+
+        .role-selection label {
+            display: block;
+            margin-bottom: 7px;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .role-selection select,
+        .sport-selection select {
+            width: 100%;
+            padding: 11px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .role-selection select:focus,
+        .sport-selection select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .sport-selection {
+            display: none;
+            margin-bottom: 18px;
+            animation: fadeIn 0.6s ease backwards;
+        }
+
+        .sport-selection.visible {
+            display: block;
+        }
+
+        .sport-selection label {
+            display: block;
+            margin-bottom: 7px;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 18px;
+            color: white;
+            z-index: 999;
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 576px) {
+            body {
+                padding: 15px;
+                justify-content: flex-start;
+                padding-top: 80px;
+            }
+
+            .login-card {
+                padding: 24px 20px;
+            }
+
+            .logo-circle {
+                width: 60px;
+                height: 60px;
+                font-size: 1.8rem;
+                margin-bottom: 10px;
+            }
+
+            .logo-section h1 {
+                font-size: 22px;
+            }
+
+            .logo-section p {
+                font-size: 12px;
+            }
+
+            .tab-buttons {
+                gap: 8px;
+                margin-bottom: 20px;
+            }
+
+            .tab-btn {
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+
+            .form-group {
+                margin-bottom: 15px;
+            }
+
+            .form-group label {
+                font-size: 12px;
+                margin-bottom: 6px;
+            }
+
+            .form-group input {
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+
+            .auth-btn {
+                padding: 12px;
+                font-size: 14px;
+            }
+
+            .theme-toggle {
+                top: 15px;
+                right: 15px;
+                width: 42px;
+                height: 42px;
+                font-size: 16px;
+            }
+
+            .credential-item {
+                font-size: 11px;
+                padding: 8px 10px;
+                margin-bottom: 5px;
+            }
         }
     </style>
 </head>
-<body>
+<body id="auth-body" data-theme="light">
+    <div class="theme-toggle" id="themeToggle" title="Toggle dark mode">
+        <i class="fas fa-moon"></i>
+    </div>
+
     <div class="login-container">
-        <div class="logo-section">
-            <div class="logo-icon">
-                <i class="fas fa-crown"></i>
-            </div>
-            <h1>APP</h1>
-            <p>Athlete Performance Predictor</p>
-        </div>
-
-        <form method="POST" action="/login">
-            <div class="form-group">
-                <label class="form-label"><i class="fas fa-user"></i> Username or Email</label>
-                <input type="text" class="form-control" name="username" placeholder="Enter your username" required>
+        <div class="login-card">
+            <div class="logo-section">
+                <div class="logo-circle">
+                    <i class="fas fa-running"></i>
+                </div>
+                <h1>APP</h1>
+                <p>Athlete Performance Predictor</p>
             </div>
 
-            <div class="form-group">
-                <label class="form-label"><i class="fas fa-lock"></i> Password</label>
-                <input type="password" class="form-control" name="password" placeholder="Enter your password" required>
+            {% if error %}
+            <div class="error-message">
+                <i class="fas fa-exclamation-circle"></i>
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <div class="tab-buttons">
+                <button type="button" class="tab-btn active" data-tab="login">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+                <button type="button" class="tab-btn" data-tab="signup">
+                    <i class="fas fa-user-plus"></i> Sign Up
+                </button>
             </div>
 
-            <button type="submit" class="btn-login">
-                <i class="fas fa-sign-in-alt"></i> Login
-            </button>
-        </form>
+            <!-- Login Tab -->
+            <div class="tab-content active" id="login-tab">
+                <form method="POST" action="{{ url_for('main.login') }}">
+                    <div class="form-group">
+                        <label for="login-username">Username</label>
+                        <input 
+                            type="text" 
+                            id="login-username" 
+                            name="username" 
+                            placeholder="Enter your username"
+                            required
+                            autocomplete="username">
+                    </div>
 
-        <div class="demo-users">
-            <h6><i class="fas fa-info-circle"></i> Demo Credentials</h6>
-            <div class="demo-user"><strong>Username:</strong> admin</div>
-            <div class="demo-user"><strong>Password:</strong> admin123</div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input 
+                            type="password" 
+                            id="login-password" 
+                            name="password" 
+                            placeholder="Enter your password"
+                            required
+                            autocomplete="current-password">
+                    </div>
+
+                    <button type="submit" class="auth-btn">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </button>
+                </form>
+            </div>
+
+            <!-- Signup Tab -->
+            <div class="tab-content" id="signup-tab">
+                <form method="POST" action="{{ url_for('main.signup') }}">
+                    <div class="form-group">
+                        <label for="signup-fullname">Full Name</label>
+                        <input 
+                            type="text" 
+                            id="signup-fullname" 
+                            name="full_name" 
+                            placeholder="Your full name"
+                            autocomplete="name">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="signup-username">Username</label>
+                        <input 
+                            type="text" 
+                            id="signup-username" 
+                            name="username" 
+                            placeholder="Choose a username (min 3 chars)"
+                            required
+                            autocomplete="username">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="signup-email">Email</label>
+                        <input 
+                            type="email" 
+                            id="signup-email" 
+                            name="email" 
+                            placeholder="your.email@example.com"
+                            required
+                            autocomplete="email">
+                    </div>
+
+                    <div class="role-selection visible">
+                        <label for="signup-role">Account Type</label>
+                        <select id="signup-role" name="role" required>
+                            <option value="">-- Select Role --</option>
+                            <option value="user">User (View Only)</option>
+                            <option value="coach">Coach (Manage Specific Sport)</option>
+                            <option value="admin">Admin (Full Access)</option>
+                        </select>
+                    </div>
+
+                    <div class="sport-selection" id="sport-selection-div">
+                        <label for="signup-sport">Select Your Sport</label>
+                        <select id="signup-sport" name="sport_specialization">
+                            <option value="">-- Select Sport --</option>
+                            <option value="Football">Football</option>
+                            <option value="Basketball">Basketball</option>
+                            <option value="Tennis">Tennis</option>
+                            <option value="Swimming">Swimming</option>
+                            <option value="Track & Field">Track & Field</option>
+                            <option value="Cricket">Cricket</option>
+                            <option value="Volleyball">Volleyball</option>
+                            <option value="Hockey">Hockey</option>
+                            <option value="Badminton">Badminton</option>
+                            <option value="Gymnastics">Gymnastics</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="signup-password">Password</label>
+                        <input 
+                            type="password" 
+                            id="signup-password" 
+                            name="password" 
+                            placeholder="Min 6 characters"
+                            required
+                            autocomplete="new-password">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="signup-confirm">Confirm Password</label>
+                        <input 
+                            type="password" 
+                            id="signup-confirm" 
+                            name="confirm_password" 
+                            placeholder="Confirm password"
+                            required
+                            autocomplete="new-password">
+                    </div>
+
+                    <button type="submit" class="auth-btn">
+                        <i class="fas fa-user-plus"></i> Create Account
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Theme toggle
+        const themeToggle = document.getElementById('themeToggle');
+        const authBody = document.getElementById('auth-body');
+
+        // Check saved preference or system preference
+        const savedTheme = localStorage.getItem('app-theme');
+        if (savedTheme) {
+            authBody.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme === 'dark');
+        } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            authBody.setAttribute('data-theme', 'dark');
+            updateThemeIcon(true);
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = authBody.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            authBody.setAttribute('data-theme', newTheme);
+            localStorage.setItem('app-theme', newTheme);
+            updateThemeIcon(newTheme === 'dark');
+        });
+
+        function updateThemeIcon(isDark) {
+            themeToggle.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+        }
+
+        // Tab switching
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabName = btn.getAttribute('data-tab');
+                
+                // Remove active class from all
+                tabButtons.forEach(b => b.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                btn.classList.add('active');
+                document.getElementById(tabName + '-tab').classList.add('active');
+            });
+        });
+
+        // Set active tab based on URL parameter or error
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeTab = '{{ tab }}' || 'login';
+        if (activeTab === 'signup') {
+            tabButtons[1].click();
+        }
+
+        // Role selection handler
+        const roleSelect = document.getElementById('signup-role');
+        const sportSelectionDiv = document.getElementById('sport-selection-div');
+        const sportSelect = document.getElementById('signup-sport');
+
+        if (roleSelect) {
+            roleSelect.addEventListener('change', function() {
+                if (this.value === 'coach') {
+                    sportSelectionDiv.classList.add('visible');
+                    sportSelect.required = true;
+                } else {
+                    sportSelectionDiv.classList.remove('visible');
+                    sportSelect.required = false;
+                    sportSelect.value = '';
+                }
+            });
+        }
+
+        // Form validation
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                const inputs = this.querySelectorAll('input[required]');
+                let isValid = true;
+                
+                inputs.forEach(input => {
+                    if (!input.value.trim()) {
+                        isValid = false;
+                        input.style.borderColor = '#dc2626';
+                    } else {
+                        input.style.borderColor = '';
+                    }
+                });
+
+                if (!isValid) {
+                    e.preventDefault();
+                }
+
+                // Validate sport selection for coaches
+                const role = document.getElementById('signup-role')?.value;
+                if (role === 'coach' && !sportSelect.value) {
+                    isValid = false;
+                    sportSelect.style.borderColor = '#dc2626';
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
 </body>
 </html>
