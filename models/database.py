@@ -54,6 +54,7 @@ class Athlete(db.Model):
     injuries = db.relationship('Injury', backref='athlete', lazy=True, cascade='all, delete-orphan')
     events = db.relationship('Event', secondary='athlete_events', backref='participants')
     talent_metrics = db.relationship('TalentMetric', backref='athlete', lazy=True, cascade='all, delete-orphan')
+    training_sessions = db.relationship('TrainingSession', backref='athlete', lazy=True, cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Athlete {self.name}>'
@@ -99,6 +100,39 @@ class Injury(db.Model):
             'date_occurred': self.date_occurred.strftime('%Y-%m-%d'),
             'recovery_duration_days': self.recovery_duration_days,
             'date_recovered': self.date_recovered.strftime('%Y-%m-%d') if self.date_recovered else None,
+            'notes': self.notes
+        }
+
+
+class TrainingSession(db.Model):
+    """Training Session Model - tracks weekly training data with performance and injury"""
+    __tablename__ = 'training_sessions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    athlete_id = db.Column(db.Integer, db.ForeignKey('athletes.id'), nullable=False)
+    session_date = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Performance rating (0-40% poor, 41-60% good, 61-90% very good, 90-100% excellent)
+    performance_rating = db.Column(db.String(20), nullable=True)  # 'poor', 'good', 'very good', 'excellent'
+    performance_percentage = db.Column(db.Float, nullable=True)  # 0-100
+    
+    # Injury tracking
+    injury_severity = db.Column(db.String(30), nullable=True)  # 'no injury', 'minor injury', 'severe injury'
+    
+    # Notes
+    notes = db.Column(db.Text)
+    
+    def __repr__(self):
+        return f'<TrainingSession Athlete#{self.athlete_id} - {self.session_date.strftime("%Y-%m-%d")}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'athlete_id': self.athlete_id,
+            'session_date': self.session_date.strftime('%Y-%m-%d'),
+            'performance_rating': self.performance_rating,
+            'performance_percentage': self.performance_percentage,
+            'injury_severity': self.injury_severity,
             'notes': self.notes
         }
 
@@ -195,6 +229,8 @@ class InjuryRiskAssessment(db.Model):
     injury_risk_score = db.Column(db.Float)  # 0-1 probability
     risk_category = db.Column(db.String(20))  # 'low', 'medium', 'high'
     model_confidence = db.Column(db.Float)  # 0-1
+    main_risk_factor = db.Column(db.String(200))  # Main cause of injury risk
+    recommendations = db.Column(db.Text)  # Recommendations to reduce risk
     
     def __repr__(self):
         return f'<InjuryRisk Athlete#{self.athlete_id} - {self.risk_category}>'
@@ -209,5 +245,7 @@ class InjuryRiskAssessment(db.Model):
             'sleep_hours': self.sleep_hours,
             'injury_risk_score': round(self.injury_risk_score, 3),
             'risk_category': self.risk_category,
-            'model_confidence': round(self.model_confidence, 3)
+            'model_confidence': round(self.model_confidence, 3),
+            'main_risk_factor': self.main_risk_factor,
+            'recommendations': self.recommendations
         }

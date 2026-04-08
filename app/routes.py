@@ -2,7 +2,7 @@
 Flask Routes - Dashboard, CRUD Operations, and ML Prediction APIs
 """
 from flask import Blueprint, render_template, request, jsonify, send_file, redirect, url_for, session
-from models.database import db, User, Athlete, Event, Injury, TalentMetric, InjuryRiskAssessment
+from models.database import db, User, Athlete, Event, Injury, TalentMetric, InjuryRiskAssessment, TrainingSession
 from ml.ml_models import InjuryRiskModel, TalentIdentificationModel
 from datetime import datetime, timedelta
 from sqlalchemy import func
@@ -108,7 +108,7 @@ def signup():
         if role == 'coach' and not sport_specialization:
             return render_template('login.html', error='Please select a sport for coaching', tab='signup')
         
-        if role not in ['admin', 'coach', 'user']:
+        if role not in ['coach', 'user']:
             return render_template('login.html', error='Invalid role selected', tab='signup')
         
         # Check if user exists
@@ -270,7 +270,6 @@ def add_athlete():
         name = request.form.get('name', '').strip()
         sport = request.form.get('sport', '').strip()
         age = request.form.get('age', '20')
-        performance_score = request.form.get('performance_score', '50')
         
         # Coaches can only add athletes for their sport
         if user_role == 'coach':
@@ -283,28 +282,44 @@ def add_athlete():
         
         try:
             age = int(age) if age else 20
-            performance_score = float(performance_score) if performance_score else 50.0
         except ValueError:
             age = 20
-            performance_score = 50.0
         
         # Generate a registration number
         import uuid
         registration_number = f"ATH-{uuid.uuid4().hex[:8].upper()}"
         
+        # System will predict performance score - start with default
         athlete = Athlete(
             name=name,
             registration_number=registration_number,
             age=age,
             sport=sport,
-            performance_score=performance_score,
+            performance_score=50.0,  # Default score, system will improve this
             training_hours_pw=10,
             sleep_hours=8
         )
         
         db.session.add(athlete)
         db.session.commit()
-        print(f"Successfully added athlete: {name}")
+        
+        # Generate initial injury risk assessment for new athlete
+        import random
+        initial_assessment = InjuryRiskAssessment(
+            athlete_id=athlete.id,
+            training_hours_pw=10,
+            prev_injuries=0,
+            sleep_hours=8,
+            injury_risk_score=random.uniform(0.2, 0.5),  # Start with low-medium risk
+            risk_category='Low',
+            main_risk_factor='No significant risk factors',
+            recommendations='Maintain current training load and sleep schedule. Focus on building fitness gradually.',
+            model_confidence=0.75
+        )
+        db.session.add(initial_assessment)
+        db.session.commit()
+        
+        print(f"Successfully added athlete: {name} with initial risk assessment")
         
         return redirect(url_for('main.athletes_list'))
     except Exception as e:
@@ -364,14 +379,339 @@ def athlete_detail(athlete_id):
         injuries = Injury.query.filter_by(athlete_id=athlete_id).order_by(Injury.date_occurred.desc()).all()
         talent_metrics = TalentMetric.query.filter_by(athlete_id=athlete_id).order_by(TalentMetric.assessment_date.desc()).all()
         risk_assessments = InjuryRiskAssessment.query.filter_by(athlete_id=athlete_id).order_by(InjuryRiskAssessment.assessment_date.desc()).limit(5).all()
+        training_sessions = TrainingSession.query.filter_by(athlete_id=athlete_id).order_by(TrainingSession.session_date.desc()).all()
         
         return render_template('athlete_detail.html', 
                              athlete=athlete, 
                              injuries=injuries,
                              talent_metrics=talent_metrics,
-                             risk_assessments=risk_assessments)
+                             risk_assessments=risk_assessments,
+                             training_sessions=training_sessions)
     except Exception as e:
         return render_template('athlete_detail.html', error=str(e))
+
+
+# ==================== TRAINING SESSION ROUTES ====================
+
+@main_bp.route('/athlete/<int:athlete_id>/training/add', methods=['POST'])
+@coach_or_admin_required
+def add_training_session(athlete_id):
+    """Add training session data for an athlete"""
+    try:
+        athlete = Athlete.query.get_or_404(athlete_id)
+        user_role = session.get('user_role', 'user')
+        user_sport = session.get('user_sport')
+        
+        # Coaches can only add training for their sport
+        if user_role == 'coach' and athlete.sport != user_sport:
+            return jsonify({'error': 'Not authorized'}), 403
+        
+        performance_rating = request.form.get('performance_rating', '').strip()
+        injury_severity = request.form.get('injury_severity', 'no injury').strip()
+        notes = request.form.get('notes', '').strip()
+        session_date = request.form.get('session_date', '')
+        
+        # Validate performance rating
+        valid_ratings = ['poor', 'good', 'very good', 'excellent']
+        if performance_rating not in valid_ratings:
+            return jsonify({'error': 'Invalid performance rating'}), 400
+        
+        # Validate injury severity
+        valid_injuries = ['no injury', 'minor injury', 'severe injury']
+        if injury_severity not in valid_injuries:
+            return jsonify({'error': 'Invalid injury severity'}), 400
+        
+        # Convert performance rating to percentage
+        rating_percentages = {
+            'poor': 25,
+            'good': 50,
+            'very good': 75,
+            'excellent': 95
+        }
+        performance_percentage = rating_percentages.get(performance_rating, 50)
+        
+        # Parse session date
+        try:
+            from datetime import datetime
+            if session_date:
+                try:
+                    session_date_obj = datetime.fromisoformat(session_date)
+                except:
+                    session_date_obj = datetime.strptime(session_date, '%Y-%m-%d')
+            else:
+                session_date_obj = datetime.utcnow()
+        except ValueError:
+            return jsonify({'error': 'Invalid date format'}), 400
+        
+        # Create training session
+        training = TrainingSession(
+            athlete_id=athlete_id,
+            session_date=session_date_obj,
+            performance_rating=performance_rating,
+            performance_percentage=performance_percentage,
+            injury_severity=injury_severity,
+            notes=notes
+        )
+        
+        db.session.add(training)
+        
+        # Create Injury record if injury severity is not "no injury"
+        if injury_severity != 'no injury':
+            severity_map = {
+                'minor injury': 'Mild',
+                'severe injury': 'Severe'
+            }
+            injury = Injury(
+                athlete_id=athlete_id,
+                injury_type=f'Training Injury - {performance_rating.capitalize()}',
+                severity=severity_map.get(injury_severity, 'Mild'),
+                date_occurred=session_date_obj,
+                notes=notes or f'Recorded during {performance_rating} performance training'
+            )
+            db.session.add(injury)
+        
+        # Create TalentMetric based on training performance
+        talent_score = (performance_percentage / 100) * 100  # Use training performance as base
+        talent_metric = TalentMetric(
+            athlete_id=athlete_id,
+            assessment_date=session_date_obj,
+            speed_score=talent_score * 0.8,
+            strength_score=talent_score * 0.9,
+            endurance_score=talent_score,
+            agility_score=talent_score * 0.85,
+            technique_score=talent_score * 0.95,
+            talent_potential=talent_score,
+            model_confidence=0.8,
+            notes=f'Auto-generated from {performance_rating} training session'
+        )
+        db.session.add(talent_metric)
+        
+        # Update athlete's overall performance score based on recent training sessions
+        # Calculate average performance from recent sessions
+        recent_sessions = TrainingSession.query.filter_by(
+            athlete_id=athlete_id
+        ).order_by(TrainingSession.session_date.desc()).limit(10).all()
+        
+        if recent_sessions:
+            avg_performance = sum([s.performance_percentage for s in recent_sessions]) / len(recent_sessions)
+            athlete.performance_score = avg_performance
+        
+        # Calculate and update injury risk assessment based on training data
+        severe_injury_count = sum([1 for s in recent_sessions if s.injury_severity == 'severe injury'])
+        minor_injury_count = sum([1 for s in recent_sessions if s.injury_severity == 'minor injury'])
+        total_sessions = len(recent_sessions)
+        
+        # Calculate injury risk score based on injury data
+        injury_risk_score = 0.0
+        if total_sessions > 0:
+            injury_risk_score = (severe_injury_count * 0.3 + minor_injury_count * 0.1) / total_sessions
+            injury_risk_score = min(0.95, injury_risk_score)  # Cap at 0.95
+        
+        # Determine risk category
+        if injury_risk_score < 0.4:
+            risk_category = 'Low'
+        elif injury_risk_score < 0.7:
+            risk_category = 'Medium'
+        else:
+            risk_category = 'High'
+        
+        # Determine main risk factor and recommendations
+        main_risk_factor = 'Unknown'
+        recommendations = 'Continue monitoring athlete performance.'
+        
+        if severe_injury_count > 0:
+            main_risk_factor = 'Previous severe injuries'
+            recommendations = 'Focus on injury prevention and rehabilitation. Consider reducing training intensity.'
+        elif minor_injury_count >= 2:
+            main_risk_factor = 'Multiple minor injuries'
+            recommendations = 'Increase focus on proper form and recovery time between sessions.'
+        elif athlete.training_hours_pw > 15:
+            main_risk_factor = 'High training load'
+            recommendations = 'Reduce weekly training hours or increase recovery time.'
+        elif athlete.sleep_hours < 6:
+            main_risk_factor = 'Insufficient sleep'
+            recommendations = 'Improve sleep hygiene. Aim for 7-9 hours per night.'
+        elif risk_category == 'Low':
+            main_risk_factor = 'Low injury risk factors'
+            recommendations = 'Continue current training regimen. Maintain good sleep and recovery habits.'
+        
+        # Update or create injury risk assessment
+        latest_assessment = InjuryRiskAssessment.query.filter_by(
+            athlete_id=athlete_id
+        ).order_by(InjuryRiskAssessment.assessment_date.desc()).first()
+        
+        if latest_assessment:
+            # Update existing assessment
+            latest_assessment.training_hours_pw = athlete.training_hours_pw
+            latest_assessment.prev_injuries = severe_injury_count + minor_injury_count
+            latest_assessment.sleep_hours = athlete.sleep_hours
+            latest_assessment.injury_risk_score = injury_risk_score
+            latest_assessment.risk_category = risk_category
+            latest_assessment.main_risk_factor = main_risk_factor
+            latest_assessment.recommendations = recommendations
+            latest_assessment.assessment_date = datetime.utcnow()
+            latest_assessment.model_confidence = 0.85
+        else:
+            # Create new assessment
+            new_assessment = InjuryRiskAssessment(
+                athlete_id=athlete_id,
+                training_hours_pw=athlete.training_hours_pw,
+                prev_injuries=severe_injury_count + minor_injury_count,
+                sleep_hours=athlete.sleep_hours,
+                injury_risk_score=injury_risk_score,
+                risk_category=risk_category,
+                main_risk_factor=main_risk_factor,
+                recommendations=recommendations,
+                model_confidence=0.85
+            )
+            db.session.add(new_assessment)
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Training session added successfully'})
+    except Exception as e:
+        print(f"Error adding training session: {e}")
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@main_bp.route('/athlete/<int:athlete_id>/training/<int:training_id>/delete', methods=['POST'])
+@coach_or_admin_required
+def delete_training_session(athlete_id, training_id):
+    """Delete a training session and related records"""
+    try:
+        athlete = Athlete.query.get_or_404(athlete_id)
+        training = TrainingSession.query.get_or_404(training_id)
+        user_role = session.get('user_role', 'user')
+        user_sport = session.get('user_sport')
+        
+        # Coaches can only delete training for their sport
+        if user_role == 'coach' and athlete.sport != user_sport:
+            return jsonify({'error': 'Not authorized'}), 403
+        
+        # Verify training belongs to athlete
+        if training.athlete_id != athlete_id:
+            return jsonify({'error': 'Training session not found'}), 404
+        
+        # Store the training session date to clean up related records
+        training_date = training.session_date
+        
+        # Delete related Injury records from the same date
+        injuries_to_delete = Injury.query.filter_by(
+            athlete_id=athlete_id
+        ).filter(Injury.date_occurred == training_date).all()
+        
+        for injury in injuries_to_delete:
+            db.session.delete(injury)
+        
+        # Delete related TalentMetric records from the same date
+        metrics_to_delete = TalentMetric.query.filter_by(
+            athlete_id=athlete_id
+        ).filter(TalentMetric.assessment_date == training_date).all()
+        
+        for metric in metrics_to_delete:
+            db.session.delete(metric)
+        
+        # Delete the training session itself
+        db.session.delete(training)
+        
+        # Recalculate athlete's performance score
+        recent_sessions = TrainingSession.query.filter_by(
+            athlete_id=athlete_id
+        ).order_by(TrainingSession.session_date.desc()).limit(10).all()
+        
+        if recent_sessions:
+            avg_performance = sum([s.performance_percentage for s in recent_sessions]) / len(recent_sessions)
+            athlete.performance_score = avg_performance
+        else:
+            athlete.performance_score = 50.0  # Reset to default
+        
+        # Recalculate injury risk assessment
+        severe_injury_count = sum([1 for s in recent_sessions if s.injury_severity == 'severe injury'])
+        minor_injury_count = sum([1 for s in recent_sessions if s.injury_severity == 'minor injury'])
+        total_sessions = len(recent_sessions)
+        
+        # Calculate injury risk score
+        injury_risk_score = 0.0
+        if total_sessions > 0:
+            injury_risk_score = (severe_injury_count * 0.3 + minor_injury_count * 0.1) / total_sessions
+            injury_risk_score = min(0.95, injury_risk_score)
+        
+        # Determine risk category
+        if injury_risk_score < 0.4:
+            risk_category = 'Low'
+        elif injury_risk_score < 0.7:
+            risk_category = 'Medium'
+        else:
+            risk_category = 'High'
+        
+        # Determine main risk factor and recommendations
+        main_risk_factor = 'Unknown'
+        recommendations = 'Continue monitoring athlete performance.'
+        
+        if severe_injury_count > 0:
+            main_risk_factor = 'Previous severe injuries'
+            recommendations = 'Focus on injury prevention and rehabilitation. Consider reducing training intensity.'
+        elif minor_injury_count >= 2:
+            main_risk_factor = 'Multiple minor injuries'
+            recommendations = 'Increase focus on proper form and recovery time between sessions.'
+        elif athlete.training_hours_pw > 15:
+            main_risk_factor = 'High training load'
+            recommendations = 'Reduce weekly training hours or increase recovery time.'
+        elif athlete.sleep_hours < 6:
+            main_risk_factor = 'Insufficient sleep'
+            recommendations = 'Improve sleep hygiene. Aim for 7-9 hours per night.'
+        elif risk_category == 'Low':
+            main_risk_factor = 'Low injury risk factors'
+            recommendations = 'Continue current training regimen. Maintain good sleep and recovery habits.'
+        
+        # Update injury risk assessment
+        latest_assessment = InjuryRiskAssessment.query.filter_by(
+            athlete_id=athlete_id
+        ).order_by(InjuryRiskAssessment.assessment_date.desc()).first()
+        
+        if latest_assessment:
+            latest_assessment.training_hours_pw = athlete.training_hours_pw
+            latest_assessment.prev_injuries = severe_injury_count + minor_injury_count
+            latest_assessment.sleep_hours = athlete.sleep_hours
+            latest_assessment.injury_risk_score = injury_risk_score
+            latest_assessment.risk_category = risk_category
+            latest_assessment.main_risk_factor = main_risk_factor
+            latest_assessment.recommendations = recommendations
+            latest_assessment.assessment_date = datetime.utcnow()
+            latest_assessment.model_confidence = 0.85
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Training session deleted successfully'})
+    except Exception as e:
+        print(f"Error deleting training session: {e}")
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@main_bp.route('/athlete/<int:athlete_id>/training/api', methods=['GET'])
+@login_required
+def get_training_sessions_api(athlete_id):
+    """Get training sessions as JSON for AJAX"""
+    try:
+        athlete = Athlete.query.get_or_404(athlete_id)
+        user_role = session.get('user_role', 'user')
+        user_sport = session.get('user_sport')
+        
+        # Coaches can only view training for their sport
+        if user_role == 'coach' and athlete.sport != user_sport:
+            return jsonify({'error': 'Not authorized'}), 403
+        
+        training_sessions = TrainingSession.query.filter_by(athlete_id=athlete_id).order_by(
+            TrainingSession.session_date.desc()
+        ).all()
+        
+        sessions_data = [s.to_dict() for s in training_sessions]
+        
+        return jsonify({'success': True, 'sessions': sessions_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @main_bp.route('/analytics')
@@ -419,6 +759,29 @@ def analytics():
         sport_performance = [sum(scores) / len(scores) if scores else 0 for scores in sports_data.values()]
         sports_count = [(label, len(sports_data[label])) for label in sport_labels]
         
+        # Get training sessions analytics
+        all_training_sessions = TrainingSession.query.all()
+        training_data = {
+            'total_sessions': len(all_training_sessions),
+            'performance_ratings': {},
+            'injury_severity': {
+                'no injury': 0,
+                'minor injury': 0,
+                'severe injury': 0
+            },
+            'athletes_with_training': len(set([s.athlete_id for s in all_training_sessions]))
+        }
+        
+        # Count performance ratings
+        for session in all_training_sessions:
+            rating = session.performance_rating
+            if rating:
+                training_data['performance_ratings'][rating] = training_data['performance_ratings'].get(rating, 0) + 1
+            
+            # Count injury severity
+            if session.injury_severity:
+                training_data['injury_severity'][session.injury_severity] = training_data['injury_severity'].get(session.injury_severity, 0) + 1
+        
         return render_template('analytics.html', 
                              injury_risks=injury_risks,
                              high_risk_count=high_risk_count,
@@ -429,7 +792,8 @@ def analytics():
                              athletes=athletes,
                              sport_data=sport_labels,
                              sport_performance=sport_performance,
-                             sports_count=sports_count)
+                             sports_count=sports_count,
+                             training_data=training_data)
     except Exception as e:
         print(f"Analytics error: {e}")
         return render_template('analytics.html', 
@@ -443,6 +807,7 @@ def analytics():
                              sport_data=[],
                              sport_performance=[],
                              sports_count=[],
+                             training_data={'total_sessions': 0, 'performance_ratings': {}, 'injury_severity': {}, 'athletes_with_training': 0},
                              error=str(e))
 
 

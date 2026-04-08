@@ -308,11 +308,11 @@
                 {% for metric in talent_metrics %}
                 <tr>
                     <td>{{ metric.assessment_date|datetimeformat('%d %b %Y') }}</td>
-                    <td>{{ metric.speed_ms|round(2) }}</td>
+                    <td>{{ metric.speed_score|round(2) }}</td>
                     <td>{{ metric.endurance_score|round(1) }}</td>
                     <td>{{ metric.strength_score|round(1) }}</td>
                     <td>{{ metric.agility_score|round(1) }}</td>
-                    <td><strong>{{ metric.overall_talent_score|round(1) }}</strong></td>
+                    <td><strong>{{ metric.talent_potential|round(1) }}</strong></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -373,6 +373,122 @@
     {% endif %}
 </div>
 
+<!-- Training Sessions Section -->
+<div class="section">
+    <div class="section-header">
+        <i class="fas fa-dumbbell"></i> Weekly Training Data
+        <button onclick="openTrainingModal()" style="margin-left: auto; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;">
+            <i class="fas fa-plus"></i> Add Training Data
+        </button>
+    </div>
+
+    {% if training_sessions %}
+    <div class="table-responsive">
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Performance Rating</th>
+                    <th>Performance %</th>
+                    <th>Injury Severity</th>
+                    <th>Notes</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in training_sessions %}
+                <tr>
+                    <td>{{ session.session_date|datetimeformat('%d %b %Y') }}</td>
+                    <td>
+                        {% set perf_map = {'poor': '❌ Poor', 'good': '✅ Good', 'very good': '⭐ Very Good', 'excellent': '🏆 Excellent'} %}
+                        <strong>{{ perf_map.get(session.performance_rating, session.performance_rating) }}</strong>
+                    </td>
+                    <td>
+                        {% if session.performance_percentage <= 40 %}
+                            <span class="badge-high">{{ session.performance_percentage|round(0)|int }}%</span>
+                        {% elif session.performance_percentage <= 60 %}
+                            <span class="badge-medium">{{ session.performance_percentage|round(0)|int }}%</span>
+                        {% else %}
+                            <span class="badge-low">{{ session.performance_percentage|round(0)|int }}%</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if session.injury_severity == 'no injury' %}
+                            <span class="badge-low">No Injury</span>
+                        {% elif session.injury_severity == 'minor injury' %}
+                            <span class="badge-medium">Minor Injury</span>
+                        {% else %}
+                            <span class="badge-high">Severe Injury</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ session.notes or 'N/A' }}</td>
+                    <td>
+                        <button onclick="deleteTrainingSession({{ athlete.id }}, {{ session.id }})" style="background: #f56565; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-calendar" style="font-size: 32px; opacity: 0.5; display: block; margin-bottom: 10px;"></i>
+        <p>No training data recorded yet</p>
+        <button onclick="openTrainingModal()" style="margin-top: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+            <i class="fas fa-plus"></i> Add Training Data
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Add Training Session Modal -->
+<div id="trainingModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); align-items: center; justify-content: center;">
+    <div class="modal-content" style="background: var(--bg-primary); padding: 30px; border-radius: 16px; max-width: 500px; width: 90%; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color: var(--text-primary); margin: 0; font-size: 22px;">Add Training Data</h2>
+            <button onclick="closeTrainingModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-secondary);">&times;</button>
+        </div>
+
+        <form id="trainingForm" method="POST" action="/athlete/{{ athlete.id }}/training/add">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 6px; color: var(--text-primary); font-weight: 600; font-size: 13px; text-transform: uppercase;">Session Date</label>
+                <input type="date" name="session_date" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 14px;">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 6px; color: var(--text-primary); font-weight: 600; font-size: 13px; text-transform: uppercase;">Performance Rating</label>
+                <select name="performance_rating" required style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 14px;">
+                    <option value="">-- Select Performance --</option>
+                    <option value="poor">❌ Poor (0-40%)</option>
+                    <option value="good">✅ Good (41-60%)</option>
+                    <option value="very good">⭐ Very Good (61-90%)</option>
+                    <option value="excellent">🏆 Excellent (90-100%)</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 6px; color: var(--text-primary); font-weight: 600; font-size: 13px; text-transform: uppercase;">Injury Status</label>
+                <select name="injury_severity" required style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 14px;">
+                    <option value="no injury">No Injury</option>
+                    <option value="minor injury">Minor Injury</option>
+                    <option value="severe injury">Severe Injury</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 6px; color: var(--text-primary); font-weight: 600; font-size: 13px; text-transform: uppercase;">Notes</label>
+                <textarea name="notes" placeholder="Add any training notes..." style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 14px; resize: vertical; min-height: 80px; font-family: inherit;"></textarea>
+            </div>
+
+            <button type="submit" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; padding: 12px 20px; color: white; font-weight: 600; border: none; cursor: pointer; width: 100%;">
+                <i class="fas fa-check"></i> Add Training Session
+            </button>
+        </form>
+    </div>
+</div>
+
 {% else %}
 <div class="empty-state">
     <i class="fas fa-user-slash" style="font-size: 48px; opacity: 0.5; display: block; margin-bottom: 15px;"></i>
@@ -383,5 +499,72 @@
     </a>
 </div>
 {% endif %}
+
+<script>
+    // Modal functions
+    function openTrainingModal() {
+        document.getElementById('trainingModal').style.display = 'flex';
+    }
+
+    function closeTrainingModal() {
+        document.getElementById('trainingModal').style.display = 'none';
+    }
+
+    // Close modal when clicking outside
+    window.addEventListener('click', function(e) {
+        const modal = document.getElementById('trainingModal');
+        if (e.target === modal) {
+            closeTrainingModal();
+        }
+    });
+
+    // Handle form submission
+    document.getElementById('trainingForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        
+        fetch('/athlete/{{ athlete.id }}/training/add', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Training session added successfully!');
+                closeTrainingModal();
+                location.reload();  // Reload to show new data
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error adding training session');
+        });
+    });
+
+    // Delete training session
+    function deleteTrainingSession(athleteId, trainingId) {
+        if (confirm('Are you sure you want to delete this training session?')) {
+            fetch(`/athlete/${athleteId}/training/${trainingId}/delete`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Training session deleted successfully!');
+                    location.reload();  // Reload to show updated data
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting training session');
+            });
+        }
+    }
+</script>
 
 {% endblock %}

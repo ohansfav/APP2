@@ -52,9 +52,25 @@ def create_app(config=None):
 
 def initialize_demo_data():
     """Initialize database with demo data if empty"""
-    from models.database import Athlete, Event, Injury, InjuryRiskAssessment
+    from models.database import Athlete, Event, Injury, InjuryRiskAssessment, User
     from datetime import timedelta
     import random
+    from werkzeug.security import generate_password_hash
+    
+    # Check if admin user exists, if not create it
+    admin_user = User.query.filter_by(username='admin').first()
+    if not admin_user:
+        admin = User(
+            username='admin',
+            email='admin@athleteapp.com',
+            password=generate_password_hash('admin123'),
+            full_name='System Administrator',
+            role='admin',
+            sport_specialization=None
+        )
+        db.session.add(admin)
+        db.session.commit()
+        print("✅ Default admin user created (username: admin, password: admin123)")
     
     # Check if data already exists
     if Athlete.query.first() is not None:
@@ -121,13 +137,29 @@ def initialize_demo_data():
     
     # Add injury risk assessments for analytics
     for athlete in athletes:
+        risk_score = random.uniform(0.2, 0.8)
+        risk_category = 'Low' if risk_score < 0.4 else 'Medium' if risk_score < 0.7 else 'High'
+        
+        # Determine main risk factor and recommendations based on athlete profile
+        if athlete.training_hours_pw > 15:
+            main_risk_factor = 'High training load'
+            recommendations = 'Reduce weekly training hours or increase recovery time.'
+        elif athlete.sleep_hours < 6:
+            main_risk_factor = 'Insufficient sleep'
+            recommendations = 'Improve sleep hygiene. Aim for 7-9 hours per night.'
+        else:
+            main_risk_factor = 'Normal risk profile'
+            recommendations = 'Continue current training regimen. Maintain good sleep and recovery habits.'
+        
         assessment = InjuryRiskAssessment(
             athlete_id=athlete.id,
             training_hours_pw=athlete.training_hours_pw,
             prev_injuries=1 if random.random() > 0.5 else 0,
             sleep_hours=athlete.sleep_hours,
-            injury_risk_score=random.uniform(0.2, 0.8),
-            risk_category=['Low', 'Medium', 'High'][random.randint(0, 2)],
+            injury_risk_score=risk_score,
+            risk_category=risk_category,
+            main_risk_factor=main_risk_factor,
+            recommendations=recommendations,
             model_confidence=random.uniform(0.7, 0.95)
         )
         db.session.add(assessment)
